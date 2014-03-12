@@ -37,7 +37,7 @@ class GracenoteArtistAgent(Agent.Artist):
   
 class GracenoteAlbumAgent(Agent.Album):
   name = 'Gracenote'
-  languages = [Local.Language.English]
+  languages = [Locale.Language.English]
   
   def search(self, results, media, lang, manual):
     album_results = []
