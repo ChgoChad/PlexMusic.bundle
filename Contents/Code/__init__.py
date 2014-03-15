@@ -17,7 +17,7 @@ class GracenoteArtistAgent(Agent.Artist):
     if media.artist == '[Unknown Artist]': 
       return
     if media.artist == 'Various Artists':
-      results.Append(MetadataSearchResult(id = Hash.SHA1('Various Artists'), name= 'Various Artists', thumb = VARIOUS_ARTISTS_POSTER, lang  = lang, score = 100))
+      results.Append(MetadataSearchResult(id = String.Quote('Various Artists'), name= 'Various Artists', thumb = VARIOUS_ARTISTS_POSTER, lang  = lang, score = 100))
       return
 
     artist_results = []
@@ -31,14 +31,24 @@ class GracenoteArtistAgent(Agent.Artist):
       score += -5
       results.Append(artist)
 
+
   def update(self, metadata, media, lang):
-    return
+    title,summary,poster,genres = GN.ArtistDetails(metadata.id)
+    metadata.title = title
+    metadata.summary = summary
+    try:
+      metadata.posters[0] = Proxy.Media(HTTP.Request(poster))
+    except:
+      pass
+    for genre in genres:
+      metadata.genres.add(genre)
 
   
 class GracenoteAlbumAgent(Agent.Album):
   name = 'Gracenote'
   languages = [Locale.Language.English]
   
+
   def search(self, results, media, lang, manual):
     album_results = []
     score = 100
@@ -51,5 +61,18 @@ class GracenoteAlbumAgent(Agent.Album):
       score += -5
       results.Append(album)
 
+
   def update(self, metadata, media, lang):
-    return
+    title,poster,originally_available_at,genres = GN.AlbumDetails(metadata.id)
+    metadata.title = title
+    try:
+      metadata.posters[0] = Proxy.Media(HTTP.Request(poster))
+    except:
+      pass
+    try:
+      metadata.originally_available_at = Datetime.ParseDate(originally_available_at)
+    except:
+      pass
+    for genre in genres:
+      metadata.genres.add(genre)
+    
