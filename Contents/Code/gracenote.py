@@ -34,76 +34,71 @@ class GracenoteConnection(object):
     return (artist,album,tracks)
 
 
-  def album_search(self,artist,album,tracks):
-    artist,album,tracks = self.unicodize(artist,album,tracks)
-    query = E.QUERY(E.MODE('SINGLE_BEST_COVER'),E.OPTION(E.PARAMETER('COVER_SIZE'),E.VALUE('XLARGE')),CMD='ALBUM_SEARCH')
-    query.append(E.TEXT(artist,TYPE='ARTIST'))
-    query.append(E.TEXT(album,TYPE='ALBUM_TITLE'))
-    for track in tracks:
-      query.append(E.TEXT(track,TYPE='TRACK_TITLE'))
+  def build_search_request(self,mode,artist=None,album=None,tracks=None,**kwargs):
+    query = E.QUERY(E.MODE(mode),CMD='ALBUM_SEARCH')
+    for key,value in kwargs.iteritems():
+      query.append(E.OPTION(E.PARAMETER(key),E.VALUE(value)))
+    if artist:
+      query.append(E.TEXT(artist,TYPE='ARTIST'))
+    if album:
+      query.append(E.TEXT(album,TYPE='ALBUM_TITLE'))
+    if tracks:
+      for track in tracks:
+        query.append(E.TEXT(track,TYPE='TRACK_TITLE'))
     queries = E.QUERIES(E.AUTH(E.CLIENT(self.CLIENT_ID),E.USER(self.user_id)),query)
     Log('Built query XML:' + XML.StringFromElement(queries))
+    return queries
+
+
+  def build_fetch_request(self,gnid,**kwargs):
+    query = E.QUERY(E.GN_ID(gnid),CMD='ALBUM_FETCH')
+    for key,value in kwargs.iteritems():
+      query.append(E.OPTION(E.PARAMETER('SELECT_EXTENDED'),E.VALUE('COVER')))
+    queries = E.QUERIES(E.AUTH(E.CLIENT(self.CLIENT_ID),E.USER(self.user_id)),query)
+    Log('Built query XML:' + XML.StringFromElement(queries))
+    return queries
+
+
+  def execute_query(self,request_body):
     try:
-      res = HTTP.Request(self.BASE_URL,data=XML.StringFromElement(queries))
+      res = HTTP.Request(self.BASE_URL,data=XML.StringFromElement(request_body))
       Log('Got result XML: ' + res.content)
       return XML.ElementFromString(res.content)
     except Exception, e:
-      Log('Problem running album search: ' + str(e))
-    
-
-  def artist_details(self,artist):
-    query = E.QUERY(E.MODE('SINGLE_BEST_COVER'),E.OPTION(E.PARAMETER('SELECT_EXTENDED'),E.VALUE('REVIEW,ARTIST_BIOGRAPHY,ARTIST_IMAGE')),CMD='ALBUM_SEARCH')
-    query.append(E.TEXT(artist,TYPE='ARTIST'))
-    queries = E.QUERIES(E.AUTH(E.CLIENT(self.CLIENT_ID),E.USER(self.user_id)),query)
-    Log('Built query XML:' + XML.StringFromElement(queries))
-    try:
-      res = HTTP.Request(self.BASE_URL,data=XML.StringFromElement(queries))
-      Log('Got result XML: ' + res.content)
-      return XML.ElementFromString(res.content)
-    except Exception, e:
-      Log('Problem getting album to extract artist details: ' + str(e))
-
-
-  def album_details(self,gnid):
-    query = E.QUERY(E.GN_ID(gnid),E.OPTION(E.PARAMETER('SELECT_EXTENDED'),E.VALUE('COVER')),CMD='ALBUM_FETCH')
-    queries = E.QUERIES(E.AUTH(E.CLIENT(self.CLIENT_ID),E.USER(self.user_id)),query)
-    Log('Built query XML:' + XML.StringFromElement(queries))
-    try:
-      res = HTTP.Request(self.BASE_URL,data=XML.StringFromElement(queries))
-      Log('Got result XML: ' + res.content)
-      return XML.ElementFromString(res.content)
-    except Exception, e:
-      Log('Problem fetching album details: ' + str(e))
+      Log('Problem executing query: ' + str(e))
 
 
   def ArtistSearch(self,artist,album,tracks,lang,results,manual):
     Log('Artist search: ' + artist)
-    xml = self.album_search(artist,album,tracks)
+    artist,album,tracks = self.unicodize(artist,album,tracks)
+    request_body = self.build_search_request('SINGLE_BEST_COVER',artist=artist,album=album,tracks=tracks)
+    response = self.execute_query(request_body)
     try:
-      name = xml.xpath('//ARTIST')[0].text
-      guid = String.Quote(name)
+      name = response.xpath('//ARTIST')[0].text
+      guid = String.Encode(name)
       results.append(MetadataSearchResult(id=guid,name=name,thumb='',lang=lang,score=100))
     except Exception, e:
       Log('Problem searching for artist: ' + str(e))
 
 
-  def ArtistDetails(self,artist):
+  def ArtistDetails(self,artist,album):
+    artist = String.Decode(artist)
     Log('Getting artist details for: ' + artist)
-    artist = String.Unquote(artist)
-    xml = self.artist_details(artist)
+    request_body = self.build_search_request('SINGLE_BEST',artist=artist,album=album,SELECT_EXTENDED='ARTIST_BIOGRAPHY,ARTIST_IMAGE')
+    response = self.execute_query(request_body)
     title,summary,poster,genres = None,None,None,[]
     try:
-      title = xml.xpath('//ARTIST')[0].text
+      title = response.xpath('//ARTIST')[0].text
       try:
-        summary = HTTP.Request(xml.xpath('//URL[@TYPE="ARTIST_BIOGRAPHY"]')[0].text).content
+        summary = HTTP.Request(response.xpath('//URL[@TYPE="ARTIST_BIOGRAPHY"]')[0].text).content
       except:
         raise
       try:
-        poster = xml.xpath('//URL[@TYPE="ARTIST_IMAGE"]')[0].text
+        poster = response.xpath('//URL[@TYPE="ARTIST_IMAGE"]')[0].text
       except:
         pass
       try:
-        genres.append(xml.xpath('//GENRE')[0].text)
+        genres.append(response.xpath('//GENRE')[0].text)
       except:
         pass
     except Exception, e:
@@ -113,10 +108,12 @@ class GracenoteConnection(object):
 
   def AlbumSearch(self,artist,album,tracks,lang,results,manual):
     Log('Album search: %s - %s' % (artist,album))
-    xml = self.album_search(artist,album,tracks)
+    artist,album,tracks = self.unicodize(artist,album,tracks)
+    request_body = self.build_search_request('SINGLE_BEST_COVER',artist=artist,album=album,tracks=tracks,COVER_SIZE='XLARGE')
+    response = self.execute_query(request_body)
     try:
-      guid = xml.xpath('//ALBUM/GN_ID')[0].text
-      name = xml.xpath('//ALBUM/TITLE')[0].text
+      guid = response.xpath('//ALBUM/GN_ID')[0].text
+      name = response.xpath('//ALBUM/TITLE')[0].text
       results.append(MetadataSearchResult(id=guid,name=name,thumb='',lang=lang,score=100))
     except Exception, e:
       Log('Problem searching for album: ' + str(e))      
@@ -124,20 +121,21 @@ class GracenoteConnection(object):
 
   def AlbumDetails(self,gnid):
     Log('Getting album details for: ' + gnid)
-    xml = self.album_details(gnid)
+    request_body = self.build_fetch_request(gnid,SELECT_EXTENDED='COVER')
+    response = self.execute_query(request_body)
     title,poster,originally_available_at,genres = None,None,None,[]
     try:
-      title = xml.xpath('//TITLE')[0].text
+      title = response.xpath('//TITLE')[0].text
       try:
-        poster = xml.xpath('//URL[@TYPE="COVERART"]')[0].text
+        poster = response.xpath('//URL[@TYPE="COVERART"]')[0].text
       except:
         pass
       try:
-        originally_available_at = Datetime.ParseDate(xml.xpath('//DATE')[0].text)
+        originally_available_at = Datetime.ParseDate(response.xpath('//DATE')[0].text)
       except:
         pass
       try:
-        genres.append(xml.xpath('//GENRE')[0].text)
+        genres.append(response.xpath('//GENRE')[0].text)
       except:
         pass
     except Exception, e:
