@@ -96,7 +96,7 @@ class GracenoteAlbumAgent(Agent.Album):
     try:
       metadata.originally_available_at = originally_available_at
     except:
-      raise
+      pass
 
     # Genres.
     for genre in genres:

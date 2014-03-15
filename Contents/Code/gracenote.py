@@ -92,7 +92,7 @@ class GracenoteConnection(object):
       try:
         summary = HTTP.Request(response.xpath('//URL[@TYPE="ARTIST_BIOGRAPHY"]')[0].text).content
       except:
-        raise
+        pass
       try:
         poster = response.xpath('//URL[@TYPE="ARTIST_IMAGE"]')[0].text
       except:
