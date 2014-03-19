@@ -1,4 +1,5 @@
 from lxml.builder import E
+import subprocess
 
 class GracenoteConnection(object):
 
@@ -141,3 +142,78 @@ class GracenoteConnection(object):
     except Exception, e:
       Log('Problem getting album details: ' + str(e))
     return title,poster,originally_available_at,genres
+
+class GracenoteSDKRunner(object):
+
+  gn_binary_path = None
+  gn_temp_path = None
+  gn_user_path = None
+
+  def __init__(self):
+    Log('Plex support files are in ' + Core.app_support_path)
+
+    bundle_dir = Core.storage.join_path(Core.app_support_path, Core.config.bundles_dir_name)
+    self.gn_binary_path = Core.storage.join_path(bundle_dir,'Gracenote.bundle','Contents','MacOS','lookup')
+    Log('Using lookup binary: ' + self.gn_binary_path)
+
+    plugin_support_dir = Core.storage.join_path(Core.app_support_path, Core.config.plugin_support_dir_name)
+    self.gn_temp_path = Core.storage.join_path(plugin_support_dir,'Data','com.plexapp.agents.gracenote','Temp')
+    Core.storage.ensure_dirs(self.gn_temp_path)
+    Log('Using temp directory: ' + self.gn_temp_path)
+    
+    self.gn_user_path = Core.storage.join_path(plugin_support_dir,'Data','com.plexapp.agents.gracenote','User')
+    Core.storage.ensure_dirs(self.gn_user_path)
+    Log('Using user directory: ' + self.gn_user_path)
+
+  def unicodize(self,artist,album,tracks):
+    try:
+      artist = unicode(artist,'utf-8')
+      album = unicode(artist,'utf-8')
+      for i,track in enumerate(tracks):
+        tracks[i] = unicode(track,'utf-8')
+    except:
+      pass    
+    return (artist,album,tracks)
+
+  def runGNSDK(self,artist,album,tracks):
+    # Random output directory.
+    out_dir = Core.storage.join_path(self.gn_temp_path,'%010x' % Util.RandomInt(0,16**10))
+    args = [self.gn_binary_path,artist,album,self.gn_user_path,out_dir] + [t for t in tracks]
+
+    # Call the SDK lookup app and wait for it to return.
+    Log('Calling GNSDK lookup with args: ' + str(args))
+    rc = subprocess.Popen(args).wait()
+    Log('GNSDK returned with ' + str(rc))
+
+    return out_dir
+
+  def ArtistSearch(self,artist,album,tracks,lang,results,manual):
+    Log('Artist search: ' + artist)
+    artist,album,tracks = self.unicodize(artist,album,tracks)
+
+    # Call the lookup and parse the resulting output files.
+    out_dir = self.runGNSDK(artist,album,tracks)
+    xml = XML.ElementFromString(Core.storage.load(Core.storage.join_path(out_dir,'album_gdo.xml')))
+    try:
+      name = xml.xpath('//ARTIST/NAME_OFFICIAL/DISPLAY')[0].text
+      guid = String.Encode(name)
+      results.append(MetadataSearchResult(id=guid,name=name,thumb='',lang=lang,score=100))
+    except Exception, e:
+      Log('Problem searching for artist: ' + str(e))
+
+  def ArtistDetails(self,artist,album):
+    pass
+
+  def AlbumSearch(self,artist,album,tracks,lang,results,manual):
+    pass
+
+  def AlbumDetails(self,gnid):
+    pass
+
+
+
+
+
+
+
+

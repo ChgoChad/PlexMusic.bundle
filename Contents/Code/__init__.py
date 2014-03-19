@@ -1,12 +1,14 @@
-from gracenote import GracenoteConnection
+from gracenote import GracenoteConnection, GracenoteSDKRunner
 import time
 
 VARIOUS_ARTISTS_POSTER = 'http://userserve-ak.last.fm/serve/252/46209667.png'
-GN = GracenoteConnection()
+if Prefs['exec_method'] == 'web':
+  GN = GracenoteConnection()
+else:
+  GN = GracenoteSDKRunner()
 
 def Start():
   HTTP.CacheTime = CACHE_1WEEK
-
 
 class GracenoteArtistAgent(Agent.Artist):
   name = 'Gracenote'

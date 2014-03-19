@@ -1,0 +1,9 @@
+[
+    {
+        "id": "exec_method",
+        "label": "Execution Method",
+        "type": "enum",
+        "values": ["Gracenote Web API","Gracenote SDK Wrapper"],
+        "default": "Gracenote SDK Wrapper"
+    }
+]
