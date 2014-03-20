@@ -1,5 +1,5 @@
 from lxml.builder import E
-import subprocess
+import subprocess, re
 
 class GracenoteConnection(object):
 
@@ -124,7 +124,7 @@ class GracenoteConnection(object):
     Log('Getting album details for: ' + gnid)
     request_body = self.build_fetch_request(gnid,SELECT_EXTENDED='COVER')
     response = self.execute_query(request_body)
-    title,poster,originally_available_at,genres = None,None,None,[]
+    title,summary,poster,originally_available_at,genres = None,None,None,None,[]
     try:
       title = response.xpath('//TITLE')[0].text
       try:
@@ -141,7 +141,10 @@ class GracenoteConnection(object):
         pass
     except Exception, e:
       Log('Problem getting album details: ' + str(e))
-    return title,poster,originally_available_at,genres
+    return title,summary,poster,originally_available_at,genres
+
+
+
 
 class GracenoteSDKRunner(object):
 
@@ -149,6 +152,7 @@ class GracenoteSDKRunner(object):
   gn_temp_path = None
   gn_user_path = None
 
+ 
   def __init__(self):
     Log('Plex support files are in ' + Core.app_support_path)
 
@@ -165,6 +169,7 @@ class GracenoteSDKRunner(object):
     Core.storage.ensure_dirs(self.gn_user_path)
     Log('Using user directory: ' + self.gn_user_path)
 
+
   def unicodize(self,artist,album,tracks):
     try:
       artist = unicode(artist,'utf-8')
@@ -175,23 +180,42 @@ class GracenoteSDKRunner(object):
       pass    
     return (artist,album,tracks)
 
-  def runGNSDK(self,artist,album,tracks):
+  def clean(self,s):
+    # return re.sub('[^\w\-_\. ]', '_', s)
+    s = re.sub('[\(\)]','',s)
+    s = re.sub('[\']','',s)
+    return re.sub('[\(\)]','',s)
+  
+  def runGNSDK(self,artist,album,tracks=[]):
+
     # Random output directory.
-    out_dir = Core.storage.join_path(self.gn_temp_path,'%010x' % Util.RandomInt(0,16**10))
-    args = [self.gn_binary_path,artist,album,self.gn_user_path,out_dir] + [t for t in tracks]
+    out_dir = Core.storage.join_path(self.gn_temp_path,'%010x' % Util.RandomInt(0,16**10) + ' ' + re.sub('[^\w\-_\. ]', '_', artist) + ' - ' + re.sub('[^\w\-_\. ]', '_', album))
+    # out_dir = Core.storage.join_path(self.gn_temp_path,'%010x' % Util.RandomInt(0,16**10))
+    args = [self.gn_binary_path,self.clean(artist),self.clean(album),self.gn_user_path,out_dir] + [self.clean(t) for t in tracks]
+    cmd = ' '.join(['\'' + a + '\'' for a in args])
+    # cmd.replace('$','\$')
 
     # Call the SDK lookup app and wait for it to return.
-    Log('Calling GNSDK lookup with args: ' + str(args))
-    rc = subprocess.Popen(args).wait()
+    # Log('Calling GNSDK lookup with args: ' + str(args))
+    Log('Calling GNSDK lookup with command: ' + cmd)
+    proc = subprocess.Popen(cmd,shell=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+    out,err = proc.communicate()
+    rc = proc.returncode
     Log('GNSDK returned with ' + str(rc))
+    Log('stdout: ' + out)
+    Log('stderr: ' + err)
 
-    return out_dir
+    if rc:
+      return None
+    else:
+      return out_dir
 
+ 
   def ArtistSearch(self,artist,album,tracks,lang,results,manual):
+
     Log('Artist search: ' + artist)
     artist,album,tracks = self.unicodize(artist,album,tracks)
 
-    # Call the lookup and parse the resulting output files.
     out_dir = self.runGNSDK(artist,album,tracks)
     xml = XML.ElementFromString(Core.storage.load(Core.storage.join_path(out_dir,'album_gdo.xml')))
     try:
@@ -201,19 +225,81 @@ class GracenoteSDKRunner(object):
     except Exception, e:
       Log('Problem searching for artist: ' + str(e))
 
+  
   def ArtistDetails(self,artist,album):
-    pass
+    
+    artist = String.Decode(artist)
+    Log('Getting artist details for: ' + artist)
+    Log('Using album hint: ' + album)
+ 
+    out_dir = self.runGNSDK(artist,album)
+    xml = XML.ElementFromString(Core.storage.load(Core.storage.join_path(out_dir,'album_gdo.xml')))
+    Log('\n\n-------- Album XML (for artist details) --------\n\n' + XML.StringFromElement(xml))
+    
+    title,summary,poster,genres = None,None,None,[]
+    try:
+      title = xml.xpath('//ARTIST/NAME_OFFICIAL/DISPLAY')[0].text
+    except:
+      Log('Couldn\'t read artist name from XML.')
+    try:
+      summary = Core.storage.load(Core.storage.join_path(out_dir,'bio.txt'))[:-1] # Strip trailing control char
+    except:
+      Log('Couldn\'t read artist bio.')
+    try:
+      poster = Proxy.Media(Core.storage.load(Core.storage.join_path(out_dir,'artist.jpg')))
+    except:
+      Log('Couldn\'t read artist image.')
+    except Exception, e:
+      Log('Problem getting artist details: ' + str(e))
+    return title,summary,poster,genres
 
+  
   def AlbumSearch(self,artist,album,tracks,lang,results,manual):
-    pass
 
-  def AlbumDetails(self,gnid):
-    pass
+    Log('Album search: ' + artist)
+    artist,album,tracks = self.unicodize(artist,album,tracks)
 
+    out_dir = self.runGNSDK(artist,album,tracks)
+    xml = XML.ElementFromString(Core.storage.load(Core.storage.join_path(out_dir,'album_gdo.xml')))
+    
+    try:
+      name = xml.xpath('//ALBUM/TITLE_OFFICIAL/DISPLAY')[0].text
+      guid = String.Encode(artist) + '+' + String.Encode(name)
+      results.append(MetadataSearchResult(id=guid,name=name,thumb='',lang=lang,score=100))
+    except Exception, e:
+      Log('Problem searching for artist: ' + str(e))
 
+  
+  def AlbumDetails(self,guid):
 
-
-
-
-
+    artist = String.Decode(guid.split('+')[0])
+    album = String.Decode(guid.split('+')[1])
+    Log('Getting album details for: ' + artist + ' - ' + album)
+ 
+    out_dir = self.runGNSDK(artist,album)
+    xml = XML.ElementFromString(Core.storage.load(Core.storage.join_path(out_dir,'album_gdo.xml')))
+    Log('\n\n-------- Album XML --------\n\n' + XML.StringFromElement(xml))
+    
+    title,summary,poster,originally_available_at,genres = None,None,None,None,[]
+    try:
+      title = xml.xpath('//ALBUM/TITLE_OFFICIAL/DISPLAY')[0].text
+    except:
+      Log('Couldn\'t read album title from XML.')
+    try:
+      summary = Core.storage.load(Core.storage.join_path(out_dir,'review.txt'))[:-1] # Strip trailing control char
+    except:
+      Log('Couldn\'t read album review.')
+    try:
+      poster = Proxy.Media(Core.storage.load(Core.storage.join_path(out_dir,'coverart.jpg')))
+    except:
+      Log('Couldn\'t read album cover art from XML.')
+    try:
+      originally_available_at = xml.xpath('//ALBUM/YEAR')[0].text
+    except:
+      Log('Couldn\'t read album year from XML.')
+    try:
+      genres.append(xml.xpath('//ALBUM/GENRE_LEVEL2')[0].text)
+    except:
+      Log('Couldn\'t read album genre from XML.')
+    return title,summary,poster,originally_available_at,genres
 

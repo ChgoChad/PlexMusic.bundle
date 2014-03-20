@@ -2,7 +2,7 @@ from gracenote import GracenoteConnection, GracenoteSDKRunner
 import time
 
 VARIOUS_ARTISTS_POSTER = 'http://userserve-ak.last.fm/serve/252/46209667.png'
-if Prefs['exec_method'] == 'web':
+if Prefs['exec_method'] == 'Gracenote Web API':
   GN = GracenoteConnection()
 else:
   GN = GracenoteSDKRunner()
@@ -54,7 +54,10 @@ class GracenoteArtistAgent(Agent.Artist):
 
     # Artwork.
     try:
-      metadata.posters[0] = Proxy.Media(HTTP.Request(poster))
+      if Prefs['exec_method'] == 'Gracenote Web API':
+        metadata.posters[0] = Proxy.Media(HTTP.Request(poster))
+      else:
+        metadata.posters[0] = poster
     except:
       pass
 
@@ -83,14 +86,20 @@ class GracenoteAlbumAgent(Agent.Album):
 
   def update(self, metadata, media, lang):
     
-    title,poster,originally_available_at,genres = GN.AlbumDetails(metadata.id)
+    title,summary,poster,originally_available_at,genres = GN.AlbumDetails(metadata.id)
     
     # Album title.
     metadata.title = title
+
+    # Album review.
+    metadata.summary = summary
     
     # Cover art.
     try:
-      metadata.posters[0] = Proxy.Media(HTTP.Request(poster))
+      if Prefs['exec_method'] == 'Gracenote Web API':
+        metadata.posters[0] = Proxy.Media(HTTP.Request(poster))
+      else:
+        metadata.posters[0] = poster
     except:
       pass
     
