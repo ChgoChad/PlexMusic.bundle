@@ -180,23 +180,35 @@ class GracenoteSDKRunner(object):
       pass    
     return (artist,album,tracks)
 
-  def clean(self,s):
-    # return re.sub('[^\w\-_\. ]', '_', s)
-    s = re.sub('[\(\)]','',s)
-    s = re.sub('[\']','',s)
-    return re.sub('[\(\)]','',s)
+
+  def make_work_dir(self,artist,album):
+    
+    # Random work directory.
+    work_dir = '%010x' % Util.RandomInt(0,16**10)
+
+    # Append human-readable artist/album to work dir (for debugging only)
+    work_dir = work_dir + ' ' + re.sub('[^\w\-_\. ]', '_', artist) + ' - ' + re.sub('[^\w\-_\. ]', '_', album)
+    
+    path = Core.storage.join_path(self.gn_temp_path,work_dir)
+    Core.storage.ensure_dirs(path)
+    
+    return path
   
-  def runGNSDK(self,artist,album,tracks=[]):
 
-    # Random output directory.
-    out_dir = Core.storage.join_path(self.gn_temp_path,'%010x' % Util.RandomInt(0,16**10) + ' ' + re.sub('[^\w\-_\. ]', '_', artist) + ' - ' + re.sub('[^\w\-_\. ]', '_', album))
-    # out_dir = Core.storage.join_path(self.gn_temp_path,'%010x' % Util.RandomInt(0,16**10))
-    args = [self.gn_binary_path,self.clean(artist),self.clean(album),self.gn_user_path,out_dir] + [self.clean(t) for t in tracks]
+  def build_input_xml(self,artist,album,tracks=[]):
+    in_xml = E.query(E.artist(artist),E.album(album))
+    for track in tracks:
+      in_xml.append(E.track(track))
+    return in_xml
+
+
+  def runGNSDK(self,work_dir):
+    
+    # Stick command line (path) args in single quotes to make sure the shell doesn't meddle with them
+    args = [self.gn_binary_path,self.gn_user_path,work_dir]
     cmd = ' '.join(['\'' + a + '\'' for a in args])
-    # cmd.replace('$','\$')
 
-    # Call the SDK lookup app and wait for it to return.
-    # Log('Calling GNSDK lookup with args: ' + str(args))
+    # TODO: This should not use shell=True in the long run, but it's useful to see stdout and sterr for debugging
     Log('Calling GNSDK lookup with command: ' + cmd)
     proc = subprocess.Popen(cmd,shell=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
     out,err = proc.communicate()
@@ -205,10 +217,7 @@ class GracenoteSDKRunner(object):
     Log('stdout: ' + out)
     Log('stderr: ' + err)
 
-    if rc:
-      return None
-    else:
-      return out_dir
+    return rc
 
  
   def ArtistSearch(self,artist,album,tracks,lang,results,manual):
@@ -216,8 +225,13 @@ class GracenoteSDKRunner(object):
     Log('Artist search: ' + artist)
     artist,album,tracks = self.unicodize(artist,album,tracks)
 
-    out_dir = self.runGNSDK(artist,album,tracks)
-    xml = XML.ElementFromString(Core.storage.load(Core.storage.join_path(out_dir,'album_gdo.xml')))
+    work_dir = self.make_work_dir(artist,album)
+    in_xml = self.build_input_xml(artist,album,tracks)
+    Log('Writing input XML:\n\n' + XML.StringFromElement(in_xml))
+    Core.storage.save(Core.storage.join_path(work_dir,'in.xml'),XML.StringFromElement(in_xml))
+
+    rc = self.runGNSDK(work_dir)
+    xml = XML.ElementFromString(Core.storage.load(Core.storage.join_path(work_dir,'album_gdo.xml')))
     try:
       name = xml.xpath('//ARTIST/NAME_OFFICIAL/DISPLAY')[0].text
       guid = String.Encode(name)
@@ -232,8 +246,13 @@ class GracenoteSDKRunner(object):
     Log('Getting artist details for: ' + artist)
     Log('Using album hint: ' + album)
  
-    out_dir = self.runGNSDK(artist,album)
-    xml = XML.ElementFromString(Core.storage.load(Core.storage.join_path(out_dir,'album_gdo.xml')))
+    work_dir = self.make_work_dir(artist,album)
+    in_xml = self.build_input_xml(artist,album)
+    Log('Writing input XML:\n\n' + XML.StringFromElement(in_xml))
+    Core.storage.save(Core.storage.join_path(work_dir,'in.xml'),XML.StringFromElement(in_xml))
+
+    rc = self.runGNSDK(work_dir)
+    xml = XML.ElementFromString(Core.storage.load(Core.storage.join_path(work_dir,'album_gdo.xml')))
     Log('\n\n-------- Album XML (for artist details) --------\n\n' + XML.StringFromElement(xml))
     
     title,summary,poster,genres = None,None,None,[]
@@ -242,11 +261,11 @@ class GracenoteSDKRunner(object):
     except:
       Log('Couldn\'t read artist name from XML.')
     try:
-      summary = Core.storage.load(Core.storage.join_path(out_dir,'bio.txt'))[:-1] # Strip trailing control char
+      summary = Core.storage.load(Core.storage.join_path(work_dir,'bio.txt'))[:-1] # Strip trailing control char
     except:
       Log('Couldn\'t read artist bio.')
     try:
-      poster = Proxy.Media(Core.storage.load(Core.storage.join_path(out_dir,'artist.jpg')))
+      poster = Proxy.Media(Core.storage.load(Core.storage.join_path(work_dir,'artist.jpg')))
     except:
       Log('Couldn\'t read artist image.')
     except Exception, e:
@@ -259,8 +278,13 @@ class GracenoteSDKRunner(object):
     Log('Album search: ' + artist)
     artist,album,tracks = self.unicodize(artist,album,tracks)
 
-    out_dir = self.runGNSDK(artist,album,tracks)
-    xml = XML.ElementFromString(Core.storage.load(Core.storage.join_path(out_dir,'album_gdo.xml')))
+    work_dir = self.make_work_dir(artist,album)
+    in_xml = self.build_input_xml(artist,album,tracks)
+    Log('Writing input XML:\n\n' + XML.StringFromElement(in_xml))
+    Core.storage.save(Core.storage.join_path(work_dir,'in.xml'),XML.StringFromElement(in_xml))
+
+    rc = self.runGNSDK(work_dir)
+    xml = XML.ElementFromString(Core.storage.load(Core.storage.join_path(work_dir,'album_gdo.xml')))
     
     try:
       name = xml.xpath('//ALBUM/TITLE_OFFICIAL/DISPLAY')[0].text
@@ -276,8 +300,13 @@ class GracenoteSDKRunner(object):
     album = String.Decode(guid.split('+')[1])
     Log('Getting album details for: ' + artist + ' - ' + album)
  
-    out_dir = self.runGNSDK(artist,album)
-    xml = XML.ElementFromString(Core.storage.load(Core.storage.join_path(out_dir,'album_gdo.xml')))
+    work_dir = self.make_work_dir(artist,album)
+    in_xml = self.build_input_xml(artist,album)
+    Log('Writing input XML:\n\n' + XML.StringFromElement(in_xml))
+    Core.storage.save(Core.storage.join_path(work_dir,'in.xml'),XML.StringFromElement(in_xml))
+
+    rc = self.runGNSDK(work_dir)
+    xml = XML.ElementFromString(Core.storage.load(Core.storage.join_path(work_dir,'album_gdo.xml')))
     Log('\n\n-------- Album XML --------\n\n' + XML.StringFromElement(xml))
     
     title,summary,poster,originally_available_at,genres = None,None,None,None,[]
@@ -286,11 +315,11 @@ class GracenoteSDKRunner(object):
     except:
       Log('Couldn\'t read album title from XML.')
     try:
-      summary = Core.storage.load(Core.storage.join_path(out_dir,'review.txt'))[:-1] # Strip trailing control char
+      summary = Core.storage.load(Core.storage.join_path(work_dir,'review.txt'))[:-1] # Strip trailing control char
     except:
       Log('Couldn\'t read album review.')
     try:
-      poster = Proxy.Media(Core.storage.load(Core.storage.join_path(out_dir,'coverart.jpg')))
+      poster = Proxy.Media(Core.storage.load(Core.storage.join_path(work_dir,'coverart.jpg')))
     except:
       Log('Couldn\'t read album cover art from XML.')
     try:
