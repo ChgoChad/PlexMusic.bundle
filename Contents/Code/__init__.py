@@ -1,115 +1,79 @@
-from gracenote import GracenoteConnection, GracenoteSDKRunner
-import time
+#
+# Copyright (c) 2014 Plex Development Team. All rights reserved.
+#
 
-VARIOUS_ARTISTS_POSTER = 'http://userserve-ak.last.fm/serve/252/46209667.png'
-if Prefs['exec_method'] == 'Gracenote Web API':
-  GN = GracenoteConnection()
-else:
-  GN = GracenoteSDKRunner()
+from urllib import urlencode # TODO: expose urlencode for dicts in the Framework?
 
 def Start():
-  HTTP.CacheTime = CACHE_1WEEK
+  HTTP.CacheTime = 30
 
 class GracenoteArtistAgent(Agent.Artist):
   name = 'Gracenote'
-  languages = [Locale.Language.English]
+  languages = [Locale.Language.English,Locale.Language.NoLanguage]
+  modern = True
 
   def search(self, results, media, lang, manual):
     
-    # Handle a couple of edge cases where artist search will give bad results.
-    if media.artist == '[Unknown Artist]': 
-      return
-    if media.artist == 'Various Artists':
-      results.Append(MetadataSearchResult(id = String.Encode('Various Artists'), name= 'Various Artists', thumb = VARIOUS_ARTISTS_POSTER, lang  = lang, score = 100))
+    # TODO: [Unknown Artist] and Various Artists.  Hmmmmm....
+    if media.artist == '[Unknown Artist]' or media.artist == 'Various Artists': 
       return
 
-    artist_results = []
-    score = 100
-    tracks = [t.title for t in media.children[0].children]
+    # TODO: Manual matches should re-run the AlbumID search with any newly entered criteria.
+    # For now, just pass so we get the GUID back.
+    if manual:
+      pass
 
-    # TODO: manual searches should return more than one result
-    GN.ArtistSearch(media.artist,media.children[0].title,tracks,lang,artist_results,manual)
-    for artist in sorted(artist_results, key=lambda k: k.score, reverse=True):
-      Log('Adding artist match: %s, Score: %s' % (artist.name, score))
-      artist.score = score
-      score += -5
-      results.Append(artist)
+    # Make sure all albums have Gracenote ID's, search for them if not.
+    for album in media.children:
+      if not album.guid.startswith('com.plexapp.agents.gracenote'):
+        Log('Found guid: ' + album.guid + ', running Gracenote search...')
+        gracenote_search(media, album, lang, fingerprint=manual)
+
+    results.Append(MetadataSearchResult(
+      id = media.guid,
+      score = 100
+    ))
 
 
   def update(self, metadata, media, lang):
 
-    # Use a generic poster for "Various Artists"
-    if metadata.title == 'Various Artists':
-        metadata.posters[VARIOUS_ARTISTS_POSTER] = Proxy.Media(HTTP.Request(VARIOUS_ARTISTS_POSTER))
-        return
+    Log('UPDATING!')
+    Log('metadata is: ' + str(metadata))
+    for album in metadata.children:
+      res = HTTP.Request('http://127.0.0.1/gracenote/update?guid=%' + album.id)
+      Log('Got album metadata: ' + XML.StringFromElement(res))
+      summary = res.xpath('//Directory[@type="album"]')[0].get('summary')
+      Log('Upadting with summary: ' + summary)
+      album.summary = summary
 
-    # Gracenote only allows searching by album, so pass along the album title hint.
-    title,summary,poster,genres = GN.ArtistDetails(metadata.id,media.children[0].title)
+def gracenote_search(media, album, lang, fingerprint=False):
 
-    # Name.
-    metadata.title = title
+  args = {}
+  for i,track in enumerate(album.children):
+    args['tracks[%d].path' % i]        = track.items[0].parts[0].file
+    args['tracks[%d].userData' % i]    = i
+    args['tracks[%d].track' % i]       = track.title
+    args['tracks[%d].artist' % i]      = track.originalTitle
+    args['tracks[%d].albumArtist' % i] = media.title
+    args['tracks[%d].album' % i]       = album.title
+    args['tracks[%d].index' % i]       = track.index
+    args['lang']                       = lang
 
-    # Artist bio.
-    metadata.summary = summary
-
-    # Artwork.
-    try:
-      if Prefs['exec_method'] == 'Gracenote Web API':
-        metadata.posters[0] = Proxy.Media(HTTP.Request(poster))
-      else:
-        metadata.posters[0] = poster
-    except:
-      pass
-
-    # Genres.
-    for genre in genres:
-      metadata.genres.add(genre)
-
+  querystring = urlencode(args).replace('%5B','[').replace('%5D',']')
+  url = 'http://127.0.0.1:32400/services/gracenote/search?' + querystring
+  if fingerprint:
+    Log('requesting fingerprinting for manual search')
+    url += '&fingerprint=1'
   
-class GracenoteAlbumAgent(Agent.Album):
-  name = 'Gracenote'
-  languages = [Locale.Language.English]
-  
-  def search(self, results, media, lang, manual):
-    album_results = []
-    score = 100
-    tracks = [t.title for t in media.children]
+  res = XML.ElementFromURL(url)
+  guid = res.xpath('//Track')[0].get('parentGUID')
 
-    # TODO: manual searches should return more than one result
-    GN.AlbumSearch(media.artist,media.title,tracks,lang,album_results,manual)
-    for album in sorted(album_results, key=lambda k: k.score, reverse=True):
-      Log('Adding album match: %s, Score: %s' % (album.name, score))
-      album.score = score
-      score += -5
-      results.Append(album)
+  # Make sure all the tracks claim to come from the same album.
+  for track in res.xpath('//Track'):
+    if track.get('parentGUID') != guid:
+      # TODO: Handle this case...
+      Log('Found a track that doesn\'t seem to come from the same album (guid of %s vs %s)' % (track.get('parentGUID'),guid))
 
-
-  def update(self, metadata, media, lang):
-    
-    title,summary,poster,originally_available_at,genres = GN.AlbumDetails(metadata.id)
-    
-    # Album title.
-    metadata.title = title
-
-    # Album review.
-    metadata.summary = summary
-    
-    # Cover art.
-    try:
-      if Prefs['exec_method'] == 'Gracenote Web API':
-        metadata.posters[0] = Proxy.Media(HTTP.Request(poster))
-      else:
-        metadata.posters[0] = poster
-    except:
-      pass
-    
-    # Release date.
-    try:
-      metadata.originally_available_at = originally_available_at
-    except:
-      pass
-
-    # Genres.
-    for genre in genres:
-      metadata.genres.add(genre)
-    
+  if guid:
+    Log('Updating album guid %s -> %s' % (album.guid,guid))
+    album.guid = guid
