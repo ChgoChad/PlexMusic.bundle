@@ -37,14 +37,36 @@ class GracenoteArtistAgent(Agent.Artist):
 
   def update(self, metadata, media, lang):
 
-    Log('UPDATING!')
-    Log('metadata is: ' + str(metadata))
-    for album in metadata.children:
-      res = HTTP.Request('http://127.0.0.1/gracenote/update?guid=%' + album.id)
-      Log('Got album metadata: ' + XML.StringFromElement(res))
-      summary = res.xpath('//Directory[@type="album"]')[0].get('summary')
-      Log('Upadting with summary: ' + summary)
-      album.summary = summary
+    # TODO: Artist-level metadata.
+
+    for album in media.children:
+
+      Log('Updating album: ' + album.title)
+      res = XML.ElementFromURL('http://127.0.0.1:32400/services/gracenote/update?guid=' + String.URLEncode(album.guid))
+      # Log('Got album metadata:\n' + XML.StringFromElement(res))
+
+      # Add album metadata.
+      a = metadata.albums.new()
+      a.title = res.xpath('//Directory[@type="album"]')[0].get('title')
+      a.summary = res.xpath('//Directory[@type="album"]')[0].get('summary')
+      a.studio = res.xpath('//Directory[@type="album"]')[0].get('studio')
+      a.originally_available_at = Datetime.ParseDate(res.xpath('//Directory[@type="album"]')[0].get('year'))
+      genres = [genre.get('tag') for genre in res.xpath('//Genre')]
+
+      # Add the tracks.
+      for track in res.xpath('//Track'):
+        
+        i = track.get('index')
+        t = a.tracks[i]
+        
+        t.index = int(i)
+        t.title = track.get('title')
+        t.tempo = int(track.get('bpm'))
+        
+        # Genres get added at the track level.
+        for genre in genres:
+          t.genres.add(genre)
+
 
 def gracenote_search(media, album, lang, fingerprint=False):
 
