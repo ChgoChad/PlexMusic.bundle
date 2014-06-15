@@ -46,7 +46,7 @@ class GracenoteArtistAgent(Agent.Artist):
       # Log('Got album metadata:\n' + XML.StringFromElement(res))
 
       # Add album metadata.
-      a = metadata.albums.new()
+      a = metadata.albums[album.guid]
       a.title = res.xpath('//Directory[@type="album"]')[0].get('title')
       a.summary = res.xpath('//Directory[@type="album"]')[0].get('summary')
       a.studio = res.xpath('//Directory[@type="album"]')[0].get('studio')
