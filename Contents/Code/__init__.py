@@ -80,6 +80,10 @@ class GracenoteArtistAgent(Agent.Artist):
         for genre in genres:
           t.genres.add(genre)
 
+        # Moods.
+        for mood in track.xpath('./Mood/@tag'):
+          t.moods.add(mood)
+
 
 def gracenote_search(media, album, lang, fingerprint=False):
 
