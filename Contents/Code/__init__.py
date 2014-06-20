@@ -10,7 +10,7 @@ def Start():
 class GracenoteArtistAgent(Agent.Artist):
   name = 'Gracenote'
   languages = [Locale.Language.English,Locale.Language.NoLanguage]
-  modern = True
+  version = 2
 
   def search(self, results, media, lang, manual):
     
