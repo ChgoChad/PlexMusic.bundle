@@ -77,10 +77,12 @@ class GracenoteArtistAgent(Agent.Artist):
         t.tempo = int(track.get('bpm') or 0)
         
         # Genres get added at the track level.
+        t.genres.clear()
         for genre in genres:
           t.genres.add(genre)
 
         # Moods.
+        t.moods.clear()
         for mood in track.xpath('./Mood/@tag'):
           t.moods.add(mood)
 
