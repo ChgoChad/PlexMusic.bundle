@@ -59,7 +59,11 @@ class GracenoteArtistAgent(Agent.Artist):
       a.summary = res.xpath('//Directory[@type="album"]')[0].get('summary')
       a.studio = res.xpath('//Directory[@type="album"]')[0].get('studio')
       a.originally_available_at = Datetime.ParseDate(res.xpath('//Directory[@type="album"]')[0].get('year'))
-      genres = [genre.get('tag') for genre in res.xpath('//Genre')]
+      
+      # Genres.
+      a.genres.clear()
+      for genre in res.xpath('//Directory[@type="album"]/Genre/@tag'):
+        a.genres.add(genre)
 
       # Fetch the art if we have it.
       for i in range(int(res.xpath('//Directory[@type="album"]')[0].get('albumArtCount'))):
@@ -73,14 +77,9 @@ class GracenoteArtistAgent(Agent.Artist):
         t = a.tracks[i]
         
         t.index = int(i)
-        t.title = track.get('title')
+        t.name = track.get('title')
         t.tempo = int(track.get('bpm') or 0)
         
-        # Genres get added at the track level.
-        t.genres.clear()
-        for genre in genres:
-          t.genres.add(genre)
-
         # Moods.
         t.moods.clear()
         for mood in track.xpath('./Mood/@tag'):
