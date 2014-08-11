@@ -12,8 +12,12 @@ class GracenoteArtistAgent(Agent.Artist):
   languages = [Locale.Language.English,Locale.Language.NoLanguage]
   version = 2
 
+
   def search(self, results, media, lang, manual):
-    
+
+    Log('Matching Artist: ' + media.artist)
+    Log('Albums: ' + str(len(media.children)))
+
     # TODO: [Unknown Artist] and Various Artists.  Hmmmmm....
     if media.artist == '[Unknown Artist]' or media.artist == 'Various Artists': 
       return
@@ -24,18 +28,22 @@ class GracenoteArtistAgent(Agent.Artist):
       pass
 
     # Make sure all albums have Gracenote ID's, search for them if not.
+    result_guid = media.guid
     for album in media.children:
       if not album.guid.startswith('com.plexapp.agents.gracenote'):
         Log('Found guid: ' + album.guid + ', running Gracenote search...')
-        gracenote_search(media, album, lang, fingerprint=manual)
+        result_guid = gracenote_search(media, album, lang, fingerprint=manual)
 
     results.Append(MetadataSearchResult(
-      id = media.guid,
+      id = result_guid,
+      name = media.artist,
       score = 100
     ))
 
 
   def update(self, metadata, media, lang):
+
+    Log('Updating: ' + media.guid)
 
     # Fetch the first Album to use for Artist data.
     res = XML.ElementFromURL('http://127.0.0.1:32400/services/gracenote/update?guid=' + String.URLEncode(media.children[0].guid))
@@ -93,7 +101,8 @@ def gracenote_search(media, album, lang, fingerprint=False):
     args['tracks[%d].path' % i]        = track.items[0].parts[0].file
     args['tracks[%d].userData' % i]    = i
     args['tracks[%d].track' % i]       = track.title
-    args['tracks[%d].artist' % i]      = track.originalTitle
+    if hasattr(track, 'originalTitle'):
+      args['tracks[%d].artist' % i]      = track.originalTitle
     args['tracks[%d].albumArtist' % i] = media.title
     args['tracks[%d].album' % i]       = album.title
     args['tracks[%d].index' % i]       = track.index
@@ -117,3 +126,5 @@ def gracenote_search(media, album, lang, fingerprint=False):
   if guid:
     Log('Updating album guid %s -> %s' % (album.guid,guid))
     album.guid = guid
+
+  return res.xpath('//Track')[0].get('grandparentGUID')
