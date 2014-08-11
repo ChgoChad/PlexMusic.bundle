@@ -15,7 +15,7 @@ class GracenoteArtistAgent(Agent.Artist):
 
   def search(self, results, media, lang, manual):
 
-    Log('Matching Artist: ' + media.artist)
+    Log('Matching Artist: ' + str(media.artist))
     Log('Albums: ' + str(len(media.children)))
 
     # TODO: [Unknown Artist] and Various Artists.  Hmmmmm....
@@ -33,12 +33,16 @@ class GracenoteArtistAgent(Agent.Artist):
       if not album.guid.startswith('com.plexapp.agents.gracenote'):
         Log('Found guid: ' + album.guid + ', running Gracenote search...')
         result_guid = gracenote_search(media, album, lang, fingerprint=manual)
+        Log('Found artist guid: ' + result_guid)
 
     results.Append(MetadataSearchResult(
       id = result_guid,
       name = media.artist,
       score = 100
     ))
+
+    Log('Result 0 id: ' + str(results[0].id))
+    Log('Result 0 name: ' + str(results[0].name))
 
 
   def update(self, metadata, media, lang):
