@@ -15,37 +15,55 @@ class GracenoteArtistAgent(Agent.Artist):
   languages = [Locale.Language.English,Locale.Language.NoLanguage]
   version = 2
 
+  def search(self, results, tree, hints, lang, manual):
 
-  def search(self, results, media, lang, manual):
+    Log('tree -> albums: %s, all_parts: %d, children: %d, guid: %s, id: %s, index: %s, originally_available_at: %s, title: %s' % (tree.albums, len(tree.all_parts()), len(tree.children), tree.guid, tree.id, tree.index, tree.originally_available_at, tree.title))
+    Log('hints -> album: %s, artist: %s, filename: %s, guid: %s, hash: %s, id: %s, index: %s, originally_available_at: %s, parent_metadata: %s, primary_agent: %s' % (hints.album, hints.artist, hints.filename, hints.guid, hints.hash, hints.id, hints.index, hints.originally_available_at, hints.parent_metadata, hints.primary_agent))
 
-    Log('Matching Artist: ' + str(media.artist))
-    Log('Albums: ' + str(len(media.children)))
-
-    # TODO: Replace these with the SHAs of the actual GN GDO's for these special cases.
-    if media.artist == '[Unknown Artist]' or media.artist == 'Various Artists':
-      results.Append(MetadataSearchResult(id='artist/' + SHA1(media.artist), lang=lang, name=media.artist, score=100))
+    if len(tree.albums) > 1:
+      Log('Multi-album search request (%d albums) not yet implemented.' % len(tree.albums))
       return
 
-    # If we don't already have a gracenote GUID or this was a manual search, run with new critera.
-    if manual or 'com.plexapp.agents.gracenote://artist' not in media.guid:
-      Log ('Running gracenote search with manual: %s and guid: %s' % (manual, media.guid))
+    Log('Running single-item search with artist: %s, album: %s (%d tracks)' % (tree.title, tree.albums['1'].title, len(tree.all_parts())))
 
-      # Search for albums until we find a match, pull the Artist details from that.
-      for album in media.children:
-        album_result = {}
-        if gracenote_search(media, album, lang, album_result, fingerprint=manual):
-          
-          # The System will build the GUID from the id and lang, so strip those out.
-          match_lang = album_result['artist_guid'].split('?lang=')[1]
-          match_id = album_result['artist_guid'].replace('com.plexapp.agents.gracenote://', '').split('?lang=')[0]
-          
-          results.Append(MetadataSearchResult(id=match_id, lang=lang, name=album_result['artist_name'], score=100))
-          break
+    args = {}
+    for i, track in enumerate(tree.albums['1'].children):
+      args['tracks[%d].path' % i]        = track.items[0].parts[0].file
+      args['tracks[%d].userData' % i]    = track.id
+      args['tracks[%d].track' % i]       = track.title
+      if hasattr(track, 'originalTitle'):
+        args['tracks[%d].artist' % i]    = track.originalTitle
+      args['tracks[%d].albumArtist' % i] = tree.title
+      args['tracks[%d].album' % i]       = tree.albums['1'].title
+      args['tracks[%d].index' % i]       = track.index
+      args['lang']                       = lang
 
-    # No-op.
-    else:
-      Log('Gracenote GUID found, skipping search.')
+    querystring = urlencode(args).replace('%5B','[').replace('%5D',']')
+    url = 'http://127.0.0.1:32400/services/gracenote/search?fingerprint=1&' + querystring
+    
+    try:
+      res = XML.ElementFromURL(url)
+      Log(XML.StringFromElement(res))
+      first_track = res.xpath('//Track')[0]
+    except Exception, e:
+      Log('Exception running Gracenote search: ' + str(e))
       return
+
+    artist = MetadataItem(id=tree.id, title=first_track.get('grandparentTitle'), guid=first_track.get('grandparentGUID'), index='1', score=100)
+
+    # TODO: Return real artist thumb URLs.
+    artist.thumb = 'http://cdn.last.fm/flatness/responsive/2/noimage/default_artist_140_g2.png'
+
+    album = MetadataItem(id=tree.albums['1'].id, title=first_track.get('parentTitle'), guid=first_track.get('parentGUID'), originally_available_at=first_track.get('year'))
+
+    # TODO: Return real album thumb URLs.
+    album.thumb = 'http://cdn.last.fm/flatness/responsive/2/noimage/default_album_140_g2.png'
+
+    for track in res.xpath('//Track'):
+      album.add(MetadataItem(matched='1', title=track.get('title'), id=track.get('userData'), guid=track.get('guid'), index=track.get('index')))
+
+    artist.add(album)
+    results.add(artist)
 
 
   def update(self, metadata, media, lang):
@@ -99,46 +117,3 @@ class GracenoteArtistAgent(Agent.Artist):
         t.moods.clear()
         for mood in track.xpath('./Mood/@tag'):
           t.moods.add(mood)
-
-
-def gracenote_search(media, album, lang, album_result, fingerprint=False):
-
-  args = {}
-  for i,track in enumerate(album.children):
-    args['tracks[%d].path' % i]        = track.items[0].parts[0].file
-    args['tracks[%d].userData' % i]    = i
-    args['tracks[%d].track' % i]       = track.title
-    if hasattr(track, 'originalTitle'):
-      args['tracks[%d].artist' % i]    = track.originalTitle
-    args['tracks[%d].albumArtist' % i] = media.title
-    args['tracks[%d].album' % i]       = album.title
-    args['tracks[%d].index' % i]       = track.index
-    args['lang']                       = lang
-
-  querystring = urlencode(args).replace('%5B','[').replace('%5D',']')
-  url = 'http://127.0.0.1:32400/services/gracenote/search?' + querystring
-  if fingerprint:
-    Log('Requesting fingerprinting for manual search')
-    url += '&fingerprint=1'
-  
-  try:
-    res = XML.ElementFromURL(url)
-    album_result['artist_name'] = res.xpath('//Track')[0].get('grandparentTitle')
-    album_result['artist_guid'] = res.xpath('//Track')[0].get('grandparentGUID')
-    return True
-  except Exception, e:
-    Log('Exception running Gracenote search: ' + str(e))
-    return False
-
-  # TODO: Make sure all the tracks claim to come from the same album?
-  # guid = res.xpath('//Track')[0].get('parentGUID')
-  # for track in res.xpath('//Track'):
-  #   if track.get('parentGUID') != guid:
-  #     # TODO: Handle this case...
-  #     Log('Found a track that doesn\'t seem to come from the same album (guid of %s vs %s)' % (track.get('parentGUID'),guid))
-
-  # TODO: Get all the track/album details and update those too.  Somehow.
-  # if guid:
-  #   Log('Updating album guid %s -> %s' % (album.guid,guid))
-  #   album.guid = guid
-
