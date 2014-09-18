@@ -66,7 +66,7 @@ class GracenoteArtistAgent(Agent.Artist):
     results.add(artist)
 
 
-  def update(self, metadata, media, lang):
+  def update(self, metadata, media, lang, child_guid=None):
 
     Log('Updating: ' + media.guid)
 
@@ -74,46 +74,45 @@ class GracenoteArtistAgent(Agent.Artist):
     res = XML.ElementFromURL('http://127.0.0.1:32400/services/gracenote/update?guid=' + String.URLEncode(media.children[0].guid))
     metadata.title = res.xpath('//Directory[@type="album"]')[0].get('parentTitle')
     metadata.summary = res.xpath('//Directory[@type="album"]')[0].get('parentSummary')
-
-    # Fetch the art if we have it.
-    for i in range(int(res.xpath('//Directory[@type="album"]')[0].get('artistArtCount'))):
-      image = HTTP.Request('http://127.0.0.1:32400/services/gracenote/thumb?guid=%s&type=artist&ord=%d' % (String.URLEncode(media.children[0].guid), i+1)).content
-      metadata.posters[i] = Proxy.Media(image, sort_order=i)
+    try:
+      metadata.posters[0] = Proxy.Media(HTTP.Request('http://' + res.xpath('//Directory[@type="album"]')[0].get('parentThumb')))
+    except Exception, e:
+      Log('Couldn\'t add artist art: ' + str(e))
 
     for album in media.children:
+      if not child_guid or child_guid == album.guid:
 
-      Log('Updating album: ' + album.title)
-      res = XML.ElementFromURL('http://127.0.0.1:32400/services/gracenote/update?guid=' + String.URLEncode(album.guid))
-      # Log('Got album metadata:\n' + XML.StringFromElement(res))
+        Log('Updating album: ' + album.title)
+        res = XML.ElementFromURL('http://127.0.0.1:32400/services/gracenote/update?guid=' + String.URLEncode(album.guid))
+        # Log('Got album metadata:\n' + XML.StringFromElement(res))
 
-      # Add album metadata.
-      a = metadata.albums[album.guid]
-      a.title = res.xpath('//Directory[@type="album"]')[0].get('title')
-      a.summary = res.xpath('//Directory[@type="album"]')[0].get('summary')
-      a.studio = res.xpath('//Directory[@type="album"]')[0].get('studio')
-      a.originally_available_at = Datetime.ParseDate(res.xpath('//Directory[@type="album"]')[0].get('year'))
-      
-      # Genres.
-      a.genres.clear()
-      for genre in res.xpath('//Directory[@type="album"]/Genre/@tag'):
-        a.genres.add(genre)
-
-      # Fetch the art if we have it.
-      for i in range(int(res.xpath('//Directory[@type="album"]')[0].get('albumArtCount'))):
-        image = HTTP.Request('http://127.0.0.1:32400/services/gracenote/thumb?guid=%s&type=album&ord=%d' % (String.URLEncode(album.guid), i+1)).content
-        a.posters[i] = Proxy.Media(image, sort_order=i)
-
-      # Add the tracks.
-      for track in res.xpath('//Track'):
+        # Add album metadata.
+        a = metadata.albums[album.guid]
+        a.title = res.xpath('//Directory[@type="album"]')[0].get('title')
+        a.summary = res.xpath('//Directory[@type="album"]')[0].get('summary')
+        a.studio = res.xpath('//Directory[@type="album"]')[0].get('studio')
+        a.originally_available_at = Datetime.ParseDate(res.xpath('//Directory[@type="album"]')[0].get('year'))
+        try:
+          a.posters[0] = Proxy.Media(HTTP.Request('http://' + res.xpath('//Directory[@type="album"]')[0].get('thumb')))
+        except Exception, e:
+          Log('Couldn\'t add album art: ' + str(e))
         
-        i = track.get('index')
-        t = a.tracks[i]
-        
-        t.index = int(i)
-        t.name = track.get('title')
-        t.tempo = int(track.get('bpm') or 0)
-        
-        # Moods.
-        t.moods.clear()
-        for mood in track.xpath('./Mood/@tag'):
-          t.moods.add(mood)
+        # Genres.
+        a.genres.clear()
+        for genre in res.xpath('//Directory[@type="album"]/Genre/@tag'):
+          a.genres.add(genre)
+
+        # Add the tracks.
+        for track in res.xpath('//Track'):
+          
+          i = track.get('index')
+          t = a.tracks[i]
+          
+          t.index = int(i)
+          t.name = track.get('title')
+          t.tempo = int(track.get('bpm') or 0)
+          
+          # Moods.
+          t.moods.clear()
+          for mood in track.xpath('./Mood/@tag'):
+            t.moods.add(mood)
