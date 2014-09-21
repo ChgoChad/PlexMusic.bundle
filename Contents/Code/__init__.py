@@ -75,7 +75,7 @@ class GracenoteArtistAgent(Agent.Artist):
     metadata.title = res.xpath('//Directory[@type="album"]')[0].get('parentTitle')
     metadata.summary = res.xpath('//Directory[@type="album"]')[0].get('parentSummary')
     try:
-      metadata.posters[0] = Proxy.Media(HTTP.Request('http://' + res.xpath('//Directory[@type="album"]')[0].get('parentThumb')))
+      metadata.posters[0] = Proxy.Media(HTTP.Request(res.xpath('//Directory[@type="album"]')[0].get('parentThumb')))
     except Exception, e:
       Log('Couldn\'t add artist art: ' + str(e))
 
@@ -93,7 +93,7 @@ class GracenoteArtistAgent(Agent.Artist):
         a.studio = res.xpath('//Directory[@type="album"]')[0].get('studio')
         a.originally_available_at = Datetime.ParseDate(res.xpath('//Directory[@type="album"]')[0].get('year'))
         try:
-          a.posters[0] = Proxy.Media(HTTP.Request('http://' + res.xpath('//Directory[@type="album"]')[0].get('thumb')))
+          a.posters[0] = Proxy.Media(HTTP.Request(res.xpath('//Directory[@type="album"]')[0].get('thumb')))
         except Exception, e:
           Log('Couldn\'t add album art: ' + str(e))
         
