@@ -24,17 +24,17 @@ class GracenoteArtistAgent(Agent.Artist):
       Log('Multi-album search request (%d albums) not yet implemented.' % len(tree.albums))
       return
 
-    Log('Running single-item search with artist: %s, album: %s (%d tracks)' % (tree.title, tree.albums['1'].title, len(tree.all_parts())))
+    Log('Running single-item search with artist: %s, album: %s (%d tracks)' % (tree.title, tree.albums.values()[0].title, len(tree.all_parts())))
 
     args = {}
-    for i, track in enumerate(tree.albums['1'].children):
+    for i, track in enumerate(tree.albums.values()[0].children):
       args['tracks[%d].path' % i]        = track.items[0].parts[0].file
       args['tracks[%d].userData' % i]    = track.id
       args['tracks[%d].track' % i]       = track.title
       if hasattr(track, 'originalTitle'):
         args['tracks[%d].artist' % i]    = track.originalTitle
       args['tracks[%d].albumArtist' % i] = tree.title
-      args['tracks[%d].album' % i]       = tree.albums['1'].title
+      args['tracks[%d].album' % i]       = tree.albums.values()[0].title
       args['tracks[%d].index' % i]       = track.index
       args['lang']                       = lang
 
@@ -54,7 +54,7 @@ class GracenoteArtistAgent(Agent.Artist):
     # TODO: Return real artist thumb URLs.
     artist.thumb = 'http://cdn.last.fm/flatness/responsive/2/noimage/default_artist_140_g2.png'
 
-    album = MetadataItem(id=tree.albums['1'].id, title=first_track.get('parentTitle'), guid=first_track.get('parentGUID'), originally_available_at=first_track.get('year'))
+    album = MetadataItem(id=tree.albums.values()[0].id, title=first_track.get('parentTitle'), guid=first_track.get('parentGUID'), originally_available_at=first_track.get('year'))
 
     # TODO: Return real album thumb URLs.
     album.thumb = 'http://cdn.last.fm/flatness/responsive/2/noimage/default_album_140_g2.png'
