@@ -49,15 +49,8 @@ class GracenoteArtistAgent(Agent.Artist):
       Log('Exception running Gracenote search: ' + str(e))
       return
 
-    artist = MetadataItem(id=tree.id, title=first_track.get('grandparentTitle'), guid=first_track.get('grandparentGUID'), index='1', score=100)
-
-    # TODO: Return real artist thumb URLs.
-    artist.thumb = 'http://cdn.last.fm/flatness/responsive/2/noimage/default_artist_140_g2.png'
-
-    album = MetadataItem(id=tree.albums.values()[0].id, title=first_track.get('parentTitle'), guid=first_track.get('parentGUID'), originally_available_at=first_track.get('year'))
-
-    # TODO: Return real album thumb URLs.
-    album.thumb = 'http://cdn.last.fm/flatness/responsive/2/noimage/default_album_140_g2.png'
+    artist = MetadataItem(id=tree.id, title=first_track.get('grandparentTitle'), guid=first_track.get('grandparentGUID'), index='1', thumb=first_track.get('grandparentThumb'), score=100)
+    album = MetadataItem(id=tree.albums.values()[0].id, title=first_track.get('parentTitle'), guid=first_track.get('parentGUID'), thumb=first_track.get('parentThumb'), originally_available_at=first_track.get('year'))
 
     for track in res.xpath('//Track'):
       album.add(MetadataItem(matched='1', title=track.get('title'), id=track.get('userData'), guid=track.get('guid'), index=track.get('index')))
