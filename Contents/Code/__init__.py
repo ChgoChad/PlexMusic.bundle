@@ -49,15 +49,12 @@ class GracenoteArtistAgent(Agent.Artist):
       Log('Exception running Gracenote search: ' + str(e))
       return
 
-    artist = MetadataItem(id=tree.id, title=first_track.get('grandparentTitle'), guid=first_track.get('grandparentGUID'), index='1', thumb=first_track.get('grandparentThumb'), score=100)
-    album = MetadataItem(id=tree.albums.values()[0].id, title=first_track.get('parentTitle'), guid=first_track.get('parentGUID'), thumb=first_track.get('parentThumb'), originally_available_at=first_track.get('year'))
+    album = SearchResult(id=tree.albums.values()[0].id, type='album', name=first_track.get('parentTitle'), guid=first_track.get('parentGUID'), thumb=first_track.get('parentThumb'), year=first_track.get('year'), parentGUID=first_track.get('grandparentGUID'), parentID=tree.id, score=100)
 
     for track in res.xpath('//Track'):
-      album.add(MetadataItem(matched='1', title=track.get('title'), id=track.get('userData'), guid=track.get('guid'), index=track.get('index')))
+      album.add(SearchResult(matched='1', type='track', name=track.get('title'), id=track.get('userData'), guid=track.get('guid'), index=track.get('index')))
 
-    artist.add(album)
-    results.add(artist)
-
+    results.add(album)
 
   def update(self, metadata, media, lang, child_guid=None):
 
