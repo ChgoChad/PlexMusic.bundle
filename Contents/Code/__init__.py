@@ -5,6 +5,9 @@
 from urllib import urlencode # TODO: expose urlencode for dicts in the Framework?
 
 
+DEBUG = True
+
+
 def Start():
   HTTP.CacheTime = 30
 
@@ -17,8 +20,9 @@ class GracenoteArtistAgent(Agent.Artist):
 
   def search(self, results, tree, hints, lang, manual):
 
-    Log('tree -> albums: %s, all_parts: %d, children: %d, guid: %s, id: %s, index: %s, originally_available_at: %s, title: %s' % (tree.albums, len(tree.all_parts()), len(tree.children), tree.guid, tree.id, tree.index, tree.originally_available_at, tree.title))
-    Log('hints -> album: %s, artist: %s, filename: %s, guid: %s, hash: %s, id: %s, index: %s, originally_available_at: %s, parent_metadata: %s, primary_agent: %s' % (hints.album, hints.artist, hints.filename, hints.guid, hints.hash, hints.id, hints.index, hints.originally_available_at, hints.parent_metadata, hints.primary_agent))
+    if DEBUG:
+      Log('tree -> albums: %s, all_parts: %d, children: %d, guid: %s, id: %s, index: %s, originally_available_at: %s, title: %s' % (tree.albums, len(tree.all_parts()), len(tree.children), tree.guid, tree.id, tree.index, tree.originally_available_at, tree.title))
+      Log('hints -> album: %s, artist: %s, filename: %s, guid: %s, hash: %s, id: %s, index: %s, originally_available_at: %s, parent_metadata: %s, primary_agent: %s' % (hints.album, hints.artist, hints.filename, hints.guid, hints.hash, hints.id, hints.index, hints.originally_available_at, hints.parent_metadata, hints.primary_agent))
 
     if len(tree.albums) > 1:
       Log('Multi-album search request (%d albums) not yet implemented.' % len(tree.albums))
@@ -67,6 +71,8 @@ class GracenoteArtistAgent(Agent.Artist):
     try:
       metadata.posters[0] = Proxy.Media(HTTP.Request(res.xpath('//Directory[@type="album"]')[0].get('parentThumb')))
     except Exception, e:
+      if DEBUG:
+        metadata.posters[0] = Proxy.Media(HTTP.Request('https://dl.dropboxusercontent.com/u/8555161/no_artist.png'))
       Log('Couldn\'t add artist art: ' + str(e))
 
     for album in media.children:
@@ -74,7 +80,8 @@ class GracenoteArtistAgent(Agent.Artist):
 
         Log('Updating album: ' + album.title)
         res = XML.ElementFromURL('http://127.0.0.1:32400/services/gracenote/update?guid=' + String.URLEncode(album.guid))
-        # Log('Got album metadata:\n' + XML.StringFromElement(res))
+        if DEBUG:
+          Log('Got album metadata:\n' + XML.StringFromElement(res))
 
         # Add album metadata.
         a = metadata.albums[album.guid]
@@ -85,6 +92,8 @@ class GracenoteArtistAgent(Agent.Artist):
         try:
           a.posters[0] = Proxy.Media(HTTP.Request(res.xpath('//Directory[@type="album"]')[0].get('thumb')))
         except Exception, e:
+          if DEBUG:
+            Proxy.Media(HTTP.Request('https://dl.dropboxusercontent.com/u/8555161/no_album.png'))
           Log('Couldn\'t add album art: ' + str(e))
         
         # Genres.
