@@ -18,7 +18,9 @@ class GracenoteArtistAgent(Agent.Artist):
   languages = [Locale.Language.English,Locale.Language.NoLanguage]
   version = 2
 
-  def search(self, results, tree, hints, lang, manual):
+  def search(self, results, tree, hints, lang, manual=False):
+
+#    return
 
     if DEBUG:
       Log('tree -> albums: %s, all_parts: %d, children: %d, guid: %s, id: %s, index: %s, originally_available_at: %s, title: %s' % (tree.albums, len(tree.all_parts()), len(tree.children), tree.guid, tree.id, tree.index, tree.originally_available_at, tree.title))
@@ -62,10 +64,13 @@ class GracenoteArtistAgent(Agent.Artist):
 
   def update(self, metadata, media, lang, child_guid=None):
 
-    Log('Updating: ' + media.guid)
+    Log('Updating: %s (GUID: %s)' % (media.title, media.guid))
+    Log('Child GUID: %s' % child_guid)
 
-    # Fetch the first Album to use for Artist data.
-    res = XML.ElementFromURL('http://127.0.0.1:32400/services/gracenote/update?guid=' + String.URLEncode(media.children[0].guid))
+    return
+
+    # Artist data.  Fetch an album (use the child_guid if we have it) and use the artist data from that.
+    res = XML.ElementFromURL('http://127.0.0.1:32400/services/gracenote/update?guid=' + String.URLEncode(child_guid or media.children[0].guid))
     metadata.title = res.xpath('//Directory[@type="album"]')[0].get('parentTitle')
     metadata.summary = res.xpath('//Directory[@type="album"]')[0].get('parentSummary')
     try:
@@ -75,43 +80,46 @@ class GracenoteArtistAgent(Agent.Artist):
         metadata.posters[0] = Proxy.Media(HTTP.Request('https://dl.dropboxusercontent.com/u/8555161/no_artist.png'))
       Log('Couldn\'t add artist art: ' + str(e))
 
+    # Album data.
     for album in media.children:
-      if not child_guid or child_guid == album.guid:
 
-        Log('Updating album: ' + album.title)
+      Log('Updating album: ' + album.title)
+
+      # If we already asked for this album's data above, no need to do so again.
+      if album.guid != child_guid and album.guid != media.children[0].guid:
         res = XML.ElementFromURL('http://127.0.0.1:32400/services/gracenote/update?guid=' + String.URLEncode(album.guid))
+      
+      if DEBUG:
+        Log('Got album metadata:\n' + XML.StringFromElement(res))
+
+      a = metadata.albums[album.guid]
+      a.title = res.xpath('//Directory[@type="album"]')[0].get('title')
+      a.summary = res.xpath('//Directory[@type="album"]')[0].get('summary')
+      a.studio = res.xpath('//Directory[@type="album"]')[0].get('studio')
+      a.originally_available_at = Datetime.ParseDate(res.xpath('//Directory[@type="album"]')[0].get('year'))
+      try:
+        a.posters[0] = Proxy.Media(HTTP.Request(res.xpath('//Directory[@type="album"]')[0].get('thumb')))
+      except Exception, e:
         if DEBUG:
-          Log('Got album metadata:\n' + XML.StringFromElement(res))
+          Proxy.Media(HTTP.Request('https://dl.dropboxusercontent.com/u/8555161/no_album.png'))
+        Log('Couldn\'t add album art: ' + str(e))
+      
+      # Genres.
+      a.genres.clear()
+      for genre in res.xpath('//Directory[@type="album"]/Genre/@tag'):
+        a.genres.add(genre)
 
-        # Add album metadata.
-        a = metadata.albums[album.guid]
-        a.title = res.xpath('//Directory[@type="album"]')[0].get('title')
-        a.summary = res.xpath('//Directory[@type="album"]')[0].get('summary')
-        a.studio = res.xpath('//Directory[@type="album"]')[0].get('studio')
-        a.originally_available_at = Datetime.ParseDate(res.xpath('//Directory[@type="album"]')[0].get('year'))
-        try:
-          a.posters[0] = Proxy.Media(HTTP.Request(res.xpath('//Directory[@type="album"]')[0].get('thumb')))
-        except Exception, e:
-          if DEBUG:
-            Proxy.Media(HTTP.Request('https://dl.dropboxusercontent.com/u/8555161/no_album.png'))
-          Log('Couldn\'t add album art: ' + str(e))
+      # # Add the tracks.
+      # for track in res.xpath('//Track'):
         
-        # Genres.
-        a.genres.clear()
-        for genre in res.xpath('//Directory[@type="album"]/Genre/@tag'):
-          a.genres.add(genre)
-
-        # Add the tracks.
-        for track in res.xpath('//Track'):
-          
-          i = track.get('index')
-          t = a.tracks[i]
-          
-          t.index = int(i)
-          t.name = track.get('title')
-          t.tempo = int(track.get('bpm') or 0)
-          
-          # Moods.
-          t.moods.clear()
-          for mood in track.xpath('./Mood/@tag'):
-            t.moods.add(mood)
+      #   i = track.get('index')
+      #   t = a.tracks[i]
+        
+      #   t.index = int(i)
+      #   t.name = track.get('title')
+      #   t.tempo = int(track.get('bpm') or 0)
+        
+      #   # Moods.
+      #   t.moods.clear()
+      #   for mood in track.xpath('./Mood/@tag'):
+      #     t.moods.add(mood)
