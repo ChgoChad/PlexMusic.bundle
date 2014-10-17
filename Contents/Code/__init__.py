@@ -55,9 +55,9 @@ class GracenoteArtistAgent(Agent.Artist):
       Log('Exception running Gracenote search: ' + str(e))
       return
 
-    album = SearchResult(id=tree.albums.values()[0].id, type='album', name=first_track.get('parentTitle'), guid=first_track.get('parentGUID'), thumb=first_track.get('parentThumb'), year=first_track.get('year'), parentGUID=first_track.get('grandparentGUID'), parentID=tree.id, score=100)
+    album = SearchResult(id=tree.albums.values()[0].id, type='album', parentName=first_track.get('grandparentTitle'), name=first_track.get('parentTitle'), guid=first_track.get('parentGUID'), thumb=first_track.get('parentThumb'), year=first_track.get('year'), parentGUID=first_track.get('grandparentGUID'), parentID=tree.id, score=100)
 
-    for track in res.xpath('//Track'):
+    for track in sorted(res.xpath('//Track'), key=lambda i: int(i.get('index'))):
       album.add(SearchResult(matched='1', type='track', name=track.get('title'), id=track.get('userData'), guid=track.get('guid'), index=track.get('index')))
 
     results.add(album)
