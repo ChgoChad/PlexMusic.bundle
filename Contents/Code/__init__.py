@@ -3,7 +3,7 @@
 #
 
 from urllib import urlencode # TODO: expose urlencode for dicts in the Framework?
-
+from collections import Counter
 
 DEBUG = True
 
@@ -49,16 +49,30 @@ class GracenoteArtistAgent(Agent.Artist):
     
     try:
       res = XML.ElementFromURL(url)
-      Log(XML.StringFromElement(res))
+      # Log(XML.StringFromElement(res))
       first_track = res.xpath('//Track')[0]
     except Exception, e:
       Log('Exception running Gracenote search: ' + str(e))
       return
 
-    album = SearchResult(id=tree.albums.values()[0].id, type='album', parentName=first_track.get('grandparentTitle'), name=first_track.get('parentTitle'), guid=first_track.get('parentGUID'), thumb=first_track.get('parentThumb'), year=first_track.get('year'), parentGUID=first_track.get('grandparentGUID'), parentID=tree.id, score=100)
+    # Go back and get the full album for more reliable metadata and so we can populate any missing tracks in the SearchResult.
+    album_guid_consensus = Counter([t.get('parentGUID') for t in res.xpath('//Track')]).most_common()[0][0]
+    Log('Got consensus on album GUID: ' + album_guid_consensus)
+    album_res = XML.ElementFromURL('http://127.0.0.1:32400/services/gracenote/update?guid=' + String.URLEncode(album_guid_consensus))
+    album_elm = album_res.xpath('//Directory')[0]
+    # Log(XML.StringFromElement(album_elm))
 
-    for track in sorted(res.xpath('//Track'), key=lambda i: int(i.get('index'))):
-      album.add(SearchResult(matched='1', type='track', name=track.get('title'), id=track.get('userData'), guid=track.get('guid'), index=track.get('index')))
+    # No album art from gracenote, clear out the thumb.
+    thumb = album_elm.get('thumb')
+    if thumb == 'http://': 
+      thumb = ''
+
+    album = SearchResult(id=tree.albums.values()[0].id, type='album', parentName=album_elm.get('parentTitle'), name=album_elm.get('title'), guid=album_guid_consensus, thumb=thumb, year=album_elm.get('year'), parentGUID=album_elm.get('parentGUID'), parentID=tree.id, score=100)
+
+    matched_guids = [t.get('guid') for t in res.xpath('//Track')]
+    for track in sorted(album_res.xpath('//Track'), key=lambda i: int(i.get('index'))):
+      matched = '1' if track.get('guid') in matched_guids else '0'
+      album.add(SearchResult(matched=matched, type='track', name=track.get('title'), id=track.get('userData'), guid=track.get('guid'), index=track.get('index')))
 
     results.add(album)
 
