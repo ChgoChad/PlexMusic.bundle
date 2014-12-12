@@ -5,7 +5,7 @@
 from urllib import urlencode # TODO: expose urlencode for dicts in the Framework?
 from collections import Counter
 
-DEBUG = True
+DEBUG = False
 
 
 def Start():
@@ -80,8 +80,6 @@ class GracenoteArtistAgent(Agent.Artist):
 
     Log('Updating: %s (GUID: %s)' % (media.title, media.guid))
     Log('Child GUID: %s' % child_guid)
-
-    return
 
     # Artist data.  Fetch an album (use the child_guid if we have it) and use the artist data from that.
     res = XML.ElementFromURL('http://127.0.0.1:32400/services/gracenote/update?guid=' + String.URLEncode(child_guid or media.children[0].guid))
