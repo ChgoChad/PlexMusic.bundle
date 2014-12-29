@@ -85,6 +85,9 @@ class GracenoteArtistAgent(Agent.Artist):
     res = XML.ElementFromURL('http://127.0.0.1:32400/services/gracenote/update?guid=' + String.URLEncode(child_guid or media.children[0].guid))
     metadata.title = res.xpath('//Directory[@type="album"]')[0].get('parentTitle')
     metadata.summary = res.xpath('//Directory[@type="album"]')[0].get('parentSummary')
+    metadata.countries.clear()
+    metadata.countries.add(res.xpath('//Directory[@type="album"]')[0].get('parentCountry'))
+
     try:
       metadata.posters[0] = Proxy.Media(HTTP.Request(res.xpath('//Directory[@type="album"]')[0].get('parentThumb')))
     except Exception, e:
