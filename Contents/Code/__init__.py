@@ -5,7 +5,7 @@
 from urllib import urlencode # TODO: expose urlencode for dicts in the Framework?
 from collections import Counter
 
-DEBUG = False
+DEBUG = True
 
 
 def Start():
