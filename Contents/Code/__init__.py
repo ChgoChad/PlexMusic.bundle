@@ -20,8 +20,6 @@ class GracenoteArtistAgent(Agent.Artist):
 
   def search(self, results, tree, hints, lang, manual=False):
 
-#    return
-
     if DEBUG:
       Log('tree -> albums: %s, all_parts: %d, children: %d, guid: %s, id: %s, index: %s, originally_available_at: %s, title: %s' % (tree.albums, len(tree.all_parts()), len(tree.children), tree.guid, tree.id, tree.index, tree.originally_available_at, tree.title))
       Log('hints -> album: %s, artist: %s, filename: %s, guid: %s, hash: %s, id: %s, index: %s, originally_available_at: %s, parent_metadata: %s, primary_agent: %s' % (hints.album, hints.artist, hints.filename, hints.guid, hints.hash, hints.id, hints.index, hints.originally_available_at, hints.parent_metadata, hints.primary_agent))
@@ -81,8 +79,14 @@ class GracenoteArtistAgent(Agent.Artist):
     Log('Updating: %s (GUID: %s)' % (media.title, media.guid))
     Log('Child GUID: %s' % child_guid)
 
-    # Artist data.  Fetch an album (use the child_guid if we have it) and use the artist data from that.
-    res = XML.ElementFromURL('http://127.0.0.1:32400/services/gracenote/update?guid=' + String.URLEncode(child_guid or media.children[0].guid))
+    # Find child albums and check that we have at least one Gracenote guid to work with.
+    child_guids = [c.guid for c in media.children if c.guid.startswith('com.plexapp.agents.gracenote://')]
+    if not child_guids:
+      Log('Couldn\'t find an album by this artist with a Gracenote guid, aborting.')
+      return
+
+    # Artist data. Fetch an album (use the given child_guid if we have it) and use the artist data from that.
+    res = XML.ElementFromURL('http://127.0.0.1:32400/services/gracenote/update?guid=' + String.URLEncode(child_guid or child_guids[0]))
     metadata.title = res.xpath('//Directory[@type="album"]')[0].get('parentTitle')
     metadata.summary = res.xpath('//Directory[@type="album"]')[0].get('parentSummary')
     metadata.countries.clear()
@@ -101,13 +105,11 @@ class GracenoteArtistAgent(Agent.Artist):
       Log('Updating album: ' + album.title)
       Log('With guid: ' + album.guid)
 
-      # If we already asked for this album's data above, no need to do so again.
-      if album.guid != child_guid and album.guid != media.children[0].guid:
-        try:
-          res = XML.ElementFromURL('http://127.0.0.1:32400/services/gracenote/update?guid=' + String.URLEncode(album.guid))
-        except Exception, e:
-          Log('Error issuing album update request: ' + str(e))
-          continue
+      try:
+        res = XML.ElementFromURL('http://127.0.0.1:32400/services/gracenote/update?guid=' + String.URLEncode(album.guid))
+      except Exception, e:
+        Log('Error issuing album update request: ' + str(e))
+        continue
       
       if DEBUG:
         Log('Got album metadata:\n' + XML.StringFromElement(res))
