@@ -131,17 +131,16 @@ class GracenoteArtistAgent(Agent.Artist):
       for genre in res.xpath('//Directory[@type="album"]/Genre/@tag'):
         a.genres.add(genre)
 
-      # # Add the tracks.
-      # for track in res.xpath('//Track'):
+      # Add the tracks.
+      for track in res.xpath('//Track'):
         
-      #   i = track.get('index')
-      #   t = a.tracks[i]
+        i = track.get('index')
+        t = a.tracks[i]
         
-      #   t.index = int(i)
-      #   t.name = track.get('title')
-      #   t.tempo = int(track.get('bpm') or 0)
-        
-      #   # Moods.
-      #   t.moods.clear()
-      #   for mood in track.xpath('./Mood/@tag'):
-      #     t.moods.add(mood)
+        t.name = track.get('title')
+        t.tempo = int(track.get('bpm') or -1)
+
+        # Moods.
+        t.moods.clear()
+        for mood in track.xpath('./Mood/@tag'):
+          t.moods.add(mood)
