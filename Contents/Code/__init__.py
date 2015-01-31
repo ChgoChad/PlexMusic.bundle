@@ -2,83 +2,12 @@
 # Copyright (c) 2014 Plex Development Team. All rights reserved.
 #
 
-from urllib import urlencode, quote # TODO: expose urlencode for dicts in the Framework?
+from urllib import urlencode  # TODO: expose urlencode for dicts in the Framework?
 from collections import Counter
-import unicodedata
-import re
+from Utils import normalize_artist_name
+from Artist import fetch_artist_posters
 
 DEBUG = True
-
-# Normalization regexes
-RE_A_AN_THE = re.compile(r'^(an |a |the )|(, an |, a |, the)$')
-RE_PARENS = re.compile(r'\([^\)]+\)$|\{[^\}]+\}$|\[[^\]]+ \]$')
-RE_PUNCTUATION = re.compile(r'[!@#\$%\^\*\_\+=\{\}\[\]\|<>`\:\-\(\)\?/\\\&\~\,\'\']')
-RE_MULTI_SPACE = re.compile(r'\s+')
-
-
-def number_to_text(n):
-  if n < 0:
-    return 'minus ' + number_to_text(-n)
-  elif n == 0:
-    return ''
-  elif n <= 19:
-    return ('one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen')[n - 1] + ' '
-  elif n <= 99:
-    return ('twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety')[n / 10 - 2] + ' ' + number_to_text(n % 10)
-  elif n <= 199:
-    return 'one hundred ' + number_to_text(n % 100)
-  elif n <= 999:
-    return number_to_text(n / 100) + 'hundred ' + number_to_text(n % 100)
-  elif n <= 1999:
-    return 'one thousand ' + number_to_text(n % 1000)
-  elif n <= 999999:
-    return number_to_text(n / 1000) + 'thousand ' + number_to_text(n % 1000)
-  elif n <= 1999999:
-    return 'one million ' + number_to_text(n % 1000000)
-  elif n <= 999999999:
-    return number_to_text(n / 1000000) + 'million ' + number_to_text(n % 1000000)
-  elif n <= 1999999999:
-    return 'one billion ' + number_to_text(n % 1000000000)
-  else:
-    return number_to_text(n / 1000000000) + 'billion ' + number_to_text(n % 1000000000)
-
-
-def normalize_artist_name(artist_name):
-  if not isinstance(artist_name, basestring):
-    return ''
-
-  artist_name = artist_name.strip().lower().replace('&', 'and').strip()
-
-  artist_name = RE_A_AN_THE.sub('', artist_name)
-
-  tmp_artist_name = RE_PARENS.sub('', artist_name)
-
-  artist_name = tmp_artist_name if len(tmp_artist_name.strip()) > 0 else artist_name
-
-  tmp_artist_name = RE_PUNCTUATION.sub(' ', artist_name)
-
-  artist_name = tmp_artist_name if len(tmp_artist_name.strip()) > 0 else artist_name
-
-  artist_name = re.sub(r'\b\d+\b', lambda m: number_to_text(int(m.group())).replace('-', ' '), artist_name)
-  
-  try:
-    normalized = unicodedata.normalize('NFKD', artist_name.decode('utf-8'))
-  except UnicodeError:
-    normalized = unicodedata.normalize('NFKD', artist_name)
-
-  corrected = ''
-  for i in range(len(normalized)):
-    if not unicodedata.combining(normalized[i]):
-      corrected += normalized[i]
-  artist_name = corrected
-
-  # artist_name = artist_name.encode('utf-8')
-
-  artist_name = RE_MULTI_SPACE.sub(' ', artist_name).strip()
-
-  artist_name = artist_name.replace(' ', '_')
-
-  return artist_name
 
 
 def Start():
@@ -165,40 +94,18 @@ class GracenoteArtistAgent(Agent.Artist):
       Log('Raw update result:')
       Log(XML.StringFromElement(res))
 
+    # Artist name.
     metadata.title = res.xpath('//Directory[@type="album"]')[0].get('parentTitle')
+
+    # Artist bio.
     metadata.summary = res.xpath('//Directory[@type="album"]')[0].get('parentSummary')
+
+    # Artist country.
     metadata.countries.clear()
     metadata.countries.add(res.xpath('//Directory[@type="album"]')[0].get('parentCountry'))
 
-    # Artist art.
-    valid_keys = []
-    artist_poster_url = res.xpath('//Directory[@type="album"]')[0].get('parentThumb')
-    try:
-      if len(artist_poster_url) > 0:
-        metadata.posters[artist_poster_url] = Proxy.Media(HTTP.Request(artist_poster_url))
-        valid_keys.append(artist_poster_url)
-    except Exception, e:
-      Log('Couldn\'t fetch artist poster: %s' % artist_poster_url)
-
-    # Artist image fallback.
-    if len(valid_keys) == 0:
-      Log('Falling back to artist artwork cache for artist: %s' % metadata.title)
-      try:
-        images = XML.ElementFromURL('http://meta.plex.tv/a/' + quote(normalize_artist_name(metadata.title))).xpath('//image')
-        image_urls = [image.get('url') for image in images if image.get('primary') == '1']
-        image_urls.extend([image.get('url') for image in images if image.get('primary') == '0'])
-        for image_url in image_urls:
-          metadata.posters[image_url] = Proxy.Media(HTTP.Request(image_url))
-          valid_keys.append(image_url)
-      except Exception, e:
-        Log('Problem adding artwork from fallback cache: %s' % str(e))
-
-    if len(valid_keys) == 0 and DEBUG:
-      dummy_poster_url = 'https://dl.dropboxusercontent.com/u/8555161/no_artist.png'
-      metadata.posters[dummy_poster_url] = Proxy.Media(HTTP.Request(dummy_poster_url))
-      valid_keys.append(dummy_poster_url)
-
-    metadata.posters.validate_keys(valid_keys)
+    # Try to grab posters from various sources.
+    fetch_artist_posters(metadata, media, gracenote_result=res, lang=lang, debug=DEBUG)
 
     # Album data.
     for album in media.children:
