@@ -5,7 +5,7 @@
 from urllib import urlencode  # TODO: expose urlencode for dicts in the Framework?
 from collections import Counter
 from Utils import normalize_artist_name
-from Artist import fetch_artist_posters
+from Artist import find_artist_posters
 
 DEBUG = True
 
@@ -104,8 +104,31 @@ class GracenoteArtistAgent(Agent.Artist):
     metadata.countries.clear()
     metadata.countries.add(res.xpath('//Directory[@type="album"]')[0].get('parentCountry'))
 
-    # Try to grab posters from various sources.
-    fetch_artist_posters(metadata, media, gracenote_result=res, lang=lang, debug=DEBUG)
+    # Primary artist poster.
+    posters = []
+    gracenote_poster = res.xpath('//Directory[@type="album"]')[0].get('parentThumb')
+    if len(gracenote_poster) > 0:
+      posters.append(gracenote_poster)
+
+    # Find posters from fallback sources.
+    if len(posters) == 0 or DEBUG:
+      album_titles = [a.title for a in media.children]
+      find_artist_posters(posters, metadata.title, album_titles, lang)
+
+    # Placeholder image if we're in DEBUG mode.
+    if len(posters) == 0 and DEBUG:
+      posters.append('https://dl.dropboxusercontent.com/u/8555161/no_artist.png')
+
+    # Add posters.
+    valid_keys = []
+    for poster in posters:
+      try:
+        metadata.posters[poster] = Proxy.Media(HTTP.Request(poster))
+        valid_keys.append(poster)
+      except Exception, e:
+        Log('Couldn\'t add poster (%s): %s' % (poster, str(e)))
+    
+    metadata.posters.validate_keys(valid_keys)
 
     # Album data.
     for album in media.children:
