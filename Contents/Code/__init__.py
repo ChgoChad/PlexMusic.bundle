@@ -5,7 +5,7 @@
 from urllib import urlencode  # TODO: expose urlencode for dicts in the Framework?
 from collections import Counter
 from Utils import normalize_artist_name
-from Artist import find_artist_posters
+from Artist import find_artist_posters, find_artist_art
 
 DEBUG = True
 
@@ -129,6 +129,19 @@ class GracenoteArtistAgent(Agent.Artist):
         Log('Couldn\'t add poster (%s): %s' % (poster, str(e)))
     
     metadata.posters.validate_keys(valid_keys)
+
+    # Find and add artist art.
+    arts = []
+    valid_keys = []
+    find_artist_art(arts, metadata.title, album_titles, lang)
+    for art in arts:
+      try:
+        metadata.art[art[0]] = Proxy.Preview(HTTP.Request(art[1]))
+        valid_keys.append(art[0])
+      except Exception, e:
+        Log('Couldn\'t add art (%s): %s' % (art[0], str(e)))
+
+    metadata.art.validate_keys(valid_keys)
 
     # Album data.
     for album in media.children:
