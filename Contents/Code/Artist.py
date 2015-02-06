@@ -23,8 +23,8 @@ def find_artist_posters(posters, artist, album_titles, lang):
     # Last.fm.
     lastfm_artist = Core.messaging.call_external_function('com.plexapp.agents.lastfm', 'MessageKit:ArtistSearch', kwargs = dict(artist=artist, albums=album_titles, lang=lang))
     if lastfm_artist and lastfm_artist['name'] != 'Various Artists':
-      posters.extend([image['#text'] for image in lastfm_artist['image'] if image['size'] == 'mega'])
-      posters.extend([image['#text'] for image in lastfm_artist['image'] if image['size'] == 'extralarge'])
+      posters.extend([image['#text'] for image in lastfm_artist['image'] if len(image['#text']) > 0 and image['size'] == 'mega'])
+      posters.extend([image['#text'] for image in lastfm_artist['image'] if len(image['#text']) > 0 and image['size'] == 'extralarge'])
     else:
       Log('No artist result from Last.fm')
 
@@ -62,5 +62,4 @@ def find_artist_art(arts, artist, album_titles, lang):
 
       # HT Backdrops.
       for image_id in XML.ElementFromURL(HTBACKDROPS_SEARCH_URL % lastfm_artist['mbid']).xpath('//image/id/text()'):
-        Log('appending thumb: %s, fullsize: %s' % (HTBACKDROPS_THUMB_URL % image_id, HTBACKDROPS_FULL_URL % image_id))
         arts.append((HTBACKDROPS_FULL_URL % image_id, HTBACKDROPS_THUMB_URL % image_id))

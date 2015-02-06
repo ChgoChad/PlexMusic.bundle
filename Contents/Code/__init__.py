@@ -20,7 +20,7 @@ class GracenoteArtistAgent(Agent.Artist):
   languages = [Locale.Language.English,Locale.Language.NoLanguage]
   version = 2
 
-  def search(self, results, tree, hints, lang, manual=False):
+  def search(self, results, tree, hints, lang='en', manual=False):
 
     if DEBUG:
       Log('tree -> albums: %s, all_parts: %d, children: %d, guid: %s, id: %s, index: %s, originally_available_at: %s, title: %s' % (tree.albums, len(tree.all_parts()), len(tree.children), tree.guid, tree.id, tree.index, tree.originally_available_at, tree.title))
@@ -76,7 +76,7 @@ class GracenoteArtistAgent(Agent.Artist):
 
     results.add(album)
 
-  def update(self, metadata, media, lang, child_guid=None):
+  def update(self, metadata, media, lang='en', child_guid=None):
 
     Log('Updating: %s (GUID: %s)' % (media.title, media.guid))
     Log('Child GUID: %s' % child_guid)
@@ -121,9 +121,9 @@ class GracenoteArtistAgent(Agent.Artist):
 
     # Add posters.
     valid_keys = []
-    for poster in posters:
+    for i, poster in enumerate(posters):
       try:
-        metadata.posters[poster] = Proxy.Media(HTTP.Request(poster))
+        metadata.posters[poster] = Proxy.Media(HTTP.Request(poster), sort_order='%02d' % (i + 1))
         valid_keys.append(poster)
       except Exception, e:
         Log('Couldn\'t add poster (%s): %s' % (poster, str(e)))
@@ -134,9 +134,9 @@ class GracenoteArtistAgent(Agent.Artist):
     arts = []
     valid_keys = []
     find_artist_art(arts, metadata.title, album_titles, lang)
-    for art in arts:
+    for i, art in enumerate(arts):
       try:
-        metadata.art[art[0]] = Proxy.Preview(HTTP.Request(art[1]))
+        metadata.art[art[0]] = Proxy.Preview(HTTP.Request(art[1]), sort_order='%02d' % (i + 1))
         valid_keys.append(art[0])
       except Exception, e:
         Log('Couldn\'t add art (%s): %s' % (art[0], str(e)))
