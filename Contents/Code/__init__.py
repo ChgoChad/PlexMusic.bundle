@@ -149,6 +149,10 @@ class GracenoteArtistAgent(Agent.Artist):
       Log('Updating album: ' + album.title)
       Log('With guid: ' + album.guid)
 
+      if not 'com.plexapp.agents.gracenote://' in album.guid:
+        Log('Skipping non-Gracenote album')
+        continue
+
       try:
         res = XML.ElementFromURL('http://127.0.0.1:32400/services/gracenote/update?guid=' + String.URLEncode(album.guid))
       except Exception, e:
@@ -164,11 +168,14 @@ class GracenoteArtistAgent(Agent.Artist):
       a.studio = res.xpath('//Directory[@type="album"]')[0].get('studio')
       a.originally_available_at = Datetime.ParseDate(res.xpath('//Directory[@type="album"]')[0].get('year'))
       try:
-        a.posters[0] = Proxy.Media(HTTP.Request(res.xpath('//Directory[@type="album"]')[0].get('thumb')))
+        poster_url = res.xpath('//Directory[@type="album"]')[0].get('thumb')
+        if len(poster_url) > 0:
+          a.posters[0] = Proxy.Media(HTTP.Request(poster_url))
       except Exception, e:
-        if DEBUG:
-          a.posters[0] = Proxy.Media(HTTP.Request('https://dl.dropboxusercontent.com/u/8555161/no_album.png'))
         Log('Couldn\'t add album art: ' + str(e))
+
+      if DEBUG and len(a.posters) > 0:
+        a.posters[0] = Proxy.Media(HTTP.Request('https://dl.dropboxusercontent.com/u/8555161/no_album.png'))
       
       # Genres.
       a.genres.clear()
