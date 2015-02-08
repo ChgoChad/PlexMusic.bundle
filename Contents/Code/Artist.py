@@ -21,12 +21,15 @@ HTBACKDROPS_FULL_URL = 'http://htbackdrops.org/api/%s/download/%%s/fullsize' % H
 def find_artist_posters(posters, artist, album_titles, lang):
 
     # Last.fm.
-    lastfm_artist = Core.messaging.call_external_function('com.plexapp.agents.lastfm', 'MessageKit:ArtistSearch', kwargs = dict(artist=artist, albums=album_titles, lang=lang))
-    if lastfm_artist and lastfm_artist['name'] != 'Various Artists':
-      posters.extend([image['#text'] for image in lastfm_artist['image'] if len(image['#text']) > 0 and image['size'] == 'mega'])
-      posters.extend([image['#text'] for image in lastfm_artist['image'] if len(image['#text']) > 0 and image['size'] == 'extralarge'])
-    else:
-      Log('No artist result from Last.fm')
+    try:
+      lastfm_artist = Core.messaging.call_external_function('com.plexapp.agents.lastfm', 'MessageKit:ArtistSearch', kwargs = dict(artist=artist, albums=album_titles, lang=lang))
+      if lastfm_artist and lastfm_artist['name'] != 'Various Artists':
+        posters.extend([image['#text'] for image in lastfm_artist['image'] if len(image['#text']) > 0 and image['size'] == 'mega'])
+        posters.extend([image['#text'] for image in lastfm_artist['image'] if len(image['#text']) > 0 and image['size'] == 'extralarge'])
+      else:
+        Log('No artist result from Last.fm')
+    except Exception, e:
+      Log('Error calling in to Last.fm for artist posters: ' + str(e))
 
     # Discogs cache.
     try:
@@ -40,7 +43,11 @@ def find_artist_posters(posters, artist, album_titles, lang):
 def find_artist_art(arts, artist, album_titles, lang):
 
     # Get the artist from Last.fm so we can grab the musicbrainz id.
-    lastfm_artist = Core.messaging.call_external_function('com.plexapp.agents.lastfm', 'MessageKit:ArtistSearch', kwargs = dict(artist=artist, albums=album_titles, lang=lang))
+    try:
+      lastfm_artist = Core.messaging.call_external_function('com.plexapp.agents.lastfm', 'MessageKit:ArtistSearch', kwargs = dict(artist=artist, albums=album_titles, lang=lang))
+    except Exception, e:
+      Log('Error calling in to Last.fm for artist artwork (MBID): ' + str(e))
+      return
 
     # Fanart.tv.
     artist_json = None
