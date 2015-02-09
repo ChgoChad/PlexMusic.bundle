@@ -123,8 +123,19 @@ class GracenoteArtistAgent(Agent.Artist):
     valid_keys = []
     for i, poster in enumerate(posters):
       try:
-        metadata.posters[poster] = Proxy.Media(HTTP.Request(poster), sort_order='%02d' % (i + 1))
-        valid_keys.append(poster)
+        poster_req = HTTP.Request(poster)
+        poster_req.load()
+        poster_data = poster_req.content
+        poster_hash = Hash.MD5(poster_data)
+
+        # Avoid the Last.fm placeholder image.
+        if poster_hash != '1c117ac7c5303f4a273546e0965c5573' and poster_hash != '833dccc04633e5616e9f34ae5d5ba057':
+          Log('Adding poster with hash: %s' % poster_hash)
+          metadata.posters[poster] = Proxy.Media(poster_data, sort_order='%02d' % (i + 1))
+          valid_keys.append(poster)
+        else:
+          Log('Skipping Last.fm Red Poster of Death: %s' % poster)
+
       except Exception, e:
         Log('Couldn\'t add poster (%s): %s' % (poster, str(e)))
     
