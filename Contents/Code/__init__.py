@@ -167,6 +167,8 @@ class GracenoteArtistAgent(Agent.Artist):
       a.summary = res.xpath('//Directory[@type="album"]')[0].get('summary')
       a.studio = res.xpath('//Directory[@type="album"]')[0].get('studio')
       a.originally_available_at = Datetime.ParseDate(res.xpath('//Directory[@type="album"]')[0].get('year'))
+
+      # Posters.
       try:
         poster_url = res.xpath('//Directory[@type="album"]')[0].get('thumb')
         if len(poster_url) > 0:
@@ -174,7 +176,7 @@ class GracenoteArtistAgent(Agent.Artist):
       except Exception, e:
         Log('Couldn\'t add album art: ' + str(e))
 
-      if DEBUG and len(a.posters) > 0:
+      if DEBUG and len(a.posters) == 0:
         a.posters[0] = Proxy.Media(HTTP.Request('https://dl.dropboxusercontent.com/u/8555161/no_album.png'))
       
       # Genres.
