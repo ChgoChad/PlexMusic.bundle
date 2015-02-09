@@ -1,0 +1,15 @@
+[
+  {
+    "id": "genre_level",
+    "type": "enum",
+    "label": "Number of genres",
+    "values": ["10", "75", "500"],
+    "default": "75"
+  },
+  {
+    "id": "debug",
+    "label": "Enable debug logging and placeholder art",
+    "type": "bool",
+    "default": "false"
+  }
+]
