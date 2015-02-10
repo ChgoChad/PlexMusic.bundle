@@ -16,7 +16,7 @@ def Start():
 
 class GracenoteArtistAgent(Agent.Artist):
 
-  name = 'Gracenote'
+  name = 'Plex Premium Music'
   languages = [Locale.Language.English,Locale.Language.NoLanguage]
   version = 2
 
@@ -82,7 +82,7 @@ class GracenoteArtistAgent(Agent.Artist):
     Log('Child GUID: %s' % child_guid)
 
     # Find child albums and check that we have at least one Gracenote guid to work with.
-    child_guids = [c.guid for c in media.children if c.guid.startswith('com.plexapp.agents.gracenote://')]
+    child_guids = [c.guid for c in media.children if c.guid.startswith('com.plexapp.agents.plexmusic://gracenote/')]
     if not child_guids:
       Log('Couldn\'t find an album by this artist with a Gracenote guid, aborting.')
       return
@@ -160,7 +160,7 @@ class GracenoteArtistAgent(Agent.Artist):
       Log('Updating album: ' + album.title)
       Log('With guid: ' + album.guid)
 
-      if not 'com.plexapp.agents.gracenote://' in album.guid:
+      if not 'com.plexapp.agents.plexmusic://gracenote/' in album.guid:
         Log('Skipping non-Gracenote album')
         continue
 
