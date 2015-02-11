@@ -111,8 +111,8 @@ class GracenoteArtistAgent(Agent.Artist):
       posters.append(gracenote_poster)
 
     # Find posters from fallback sources.
+    album_titles = [a.title for a in media.children]
     if len(posters) == 0 or DEBUG:
-      album_titles = [a.title for a in media.children]
       find_artist_posters(posters, metadata.title, album_titles, lang)
 
     # Placeholder image if we're in DEBUG mode.
