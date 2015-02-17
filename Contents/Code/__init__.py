@@ -193,15 +193,11 @@ class GracenoteArtistAgent(Agent.Artist):
       # Genres.
       a.genres.clear()
       genres = [genre for genre in res.xpath('//Directory[@type="album"]/Genre/@tag')]
-      Log('genres: ' + str(genres))
       if len(genres) > 0 and Prefs['genre_level'] == '10':
-        Log('adding course genre: ' + genres[0])
         a.genres.add(genres[0])
       elif len(genres) > 1 and Prefs['genre_level'] == '75':
-        Log('adding medium genre: ' + genres[1])
         a.genres.add(genres[1])
       elif len(genres) > 2 and Prefs['genre_level'] == '500':
-        Log('adding fine genre: ' + genres[2])
         a.genres.add(genres[2])
 
       # Add the tracks.
