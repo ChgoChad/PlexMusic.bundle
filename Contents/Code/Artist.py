@@ -51,7 +51,7 @@ def find_artist_art(arts, artist, album_titles, lang):
 
     # Fanart.tv.
     artist_json = None
-    if 'mbid' in lastfm_artist and len(lastfm_artist['mbid']) == 36:  # Sanity check.
+    if lastfm_artist and 'mbid' in lastfm_artist and len(lastfm_artist['mbid']) == 36:  # Sanity check.
       try:
         artist_json = JSON.ObjectFromURL(FANART_TV_ARTIST_URL % lastfm_artist['mbid'], headers={'api-key':FANART_TV_API_KEY})
       except:
@@ -60,13 +60,17 @@ def find_artist_art(arts, artist, album_titles, lang):
         try:
           artist_mbid = XML.ElementFromURL(MB_ARTIST_URL % lastfm_artist['mbid']).xpath('//a:artist/@id', namespace=MB_NS)[0]
           artist_json = JSON.ObjectFromURL(FANART_TV_ARTIST_URL % lastfm_artist['mbid'], headers={'api-key':FANART_TV_API_KEY})
-        except:
-          pass
+        except Exception, e:
+          Log('Couldn\'t obtain MBID for %s: %s' % (artist, str(e)))
+          return
 
       if artist_json and 'artistbackground' in artist_json:
         for art in artist_json['artistbackground']:
           arts.append((art['url'], FANART_TV_PREVIEW_URL % art['url']))
 
       # HT Backdrops.
-      for image_id in XML.ElementFromURL(HTBACKDROPS_SEARCH_URL % lastfm_artist['mbid']).xpath('//image/id/text()'):
-        arts.append((HTBACKDROPS_FULL_URL % image_id, HTBACKDROPS_THUMB_URL % image_id))
+      try:
+        for image_id in XML.ElementFromURL(HTBACKDROPS_SEARCH_URL % lastfm_artist['mbid']).xpath('//image/id/text()'):
+          arts.append((HTBACKDROPS_FULL_URL % image_id, HTBACKDROPS_THUMB_URL % image_id))
+      except Exception, e:
+        Log('Error fetching artist art from HTBackdrops: ' + str(e))
