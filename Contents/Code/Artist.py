@@ -58,7 +58,7 @@ def find_artist_art(arts, artist, album_titles, lang):
         # Go back and ask MB for a potentially updated id.
         Log('No results for Last.fm-returned mbid %s, checking for an updated one' % lastfm_artist['mbid'])
         try:
-          artist_mbid = XML.ElementFromURL(MB_ARTIST_URL % lastfm_artist['mbid']).xpath('//a:artist/@id', namespace=MB_NS)[0]
+          artist_mbid = XML.ElementFromURL(MB_ARTIST_URL % lastfm_artist['mbid']).xpath('//a:artist/@id', namespaces=MB_NS)[0]
           artist_json = JSON.ObjectFromURL(FANART_TV_ARTIST_URL % lastfm_artist['mbid'], headers={'api-key':FANART_TV_API_KEY})
         except Exception, e:
           Log('Couldn\'t obtain MBID for %s: %s' % (artist, str(e)))
