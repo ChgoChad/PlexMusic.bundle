@@ -63,14 +63,19 @@ class GracenoteArtistAgent(Agent.Artist):
       if thumb == 'http://': 
         thumb = ''
 
-      album_result = SearchResult(id=tree.albums.values()[0].id, type='album', parentName=album_elm.get('parentTitle'), name=album_elm.get('title'), guid=album_guid_consensus, thumb=thumb, year=album_elm.get('year'), parentGUID=album_elm.get('parentGUID'), parentID=tree.id, score=100)
-
+      track_results = []
       matched_guids = [t.get('guid') for t in res.xpath('//Track')]
       for track in sorted(album_res.xpath('//Track'), key=lambda i: int(i.get('index'))):
         matched = '1' if track.get('guid') in matched_guids else '0'
-        album_result.add(SearchResult(matched=matched, type='track', name=track.get('title'), id=track.get('userData'), guid=track.get('guid'), index=track.get('index')))
+        track_results.append(SearchResult(matched=matched, type='track', name=track.get('title'), id=track.get('userData'), guid=track.get('guid'), index=track.get('index')))
 
-      Log('Got album result: %s' % album_result.name)
+      # Score based on number of matched tracks.  Used when checking against a threshold for automatically matching after renaming/reparenting.
+      album_score = int((len([t for t in track_results if t.matched == '1']) / float(len(track_results))) * 100)
+      album_result = SearchResult(id=tree.albums.values()[0].id, type='album', parentName=album_elm.get('parentTitle'), name=album_elm.get('title'), guid=album_guid_consensus, thumb=thumb, year=album_elm.get('year'), parentGUID=album_elm.get('parentGUID'), parentID=tree.id, score=album_score)
+      for track_result in track_results:
+        album_result.add(track_result)
+
+      Log('Got album result: %s (score: %d)' % (album_result.name, album_result.score))
       album_results.append(album_result)
       artist_guids.append(album_elm.get('parentGUID'))
 
@@ -95,16 +100,16 @@ class GracenoteArtistAgent(Agent.Artist):
       for album_result in album_results:
         if album_result.parentGUID == artist_guid_consensus:
           artist_name = album_result.parentName
-          Log('Got artist result: %s' % artist_name)
           break
       
       # Score based on the proportion of albums that matched.
       artist_score = int(50 + 50 * (artist_guid_counter[0][1] / float(len(tree.albums))))
-      artist_result = SearchResult(id=tree.id, type='artist', name=artist_name, guid=artist_guid_consensus, score=artist_score)
 
+      artist_result = SearchResult(id=tree.id, type='artist', name=artist_name, guid=artist_guid_consensus, score=artist_score)
       for album_result in album_results:
         artist_result.add(album_result)
 
+      Log('Got artist result: %s (score: %d)' % (artist_result.name, artist_result.score))
       results.add(artist_result)
 
 
