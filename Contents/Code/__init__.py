@@ -95,7 +95,8 @@ class GracenoteArtistAgent(Agent.Artist):
       Log(XML.StringFromElement(res))
 
     # Artist name.
-    metadata.title = res.xpath('//Directory[@type="album"]')[0].get('parentTitle')
+    if metadata.title is None:
+      metadata.title = res.xpath('//Directory[@type="album"]')[0].get('parentTitle')
 
     # Artist bio.
     metadata.summary = res.xpath('//Directory[@type="album"]')[0].get('parentSummary')
@@ -174,7 +175,8 @@ class GracenoteArtistAgent(Agent.Artist):
         Log('Got album metadata:\n' + XML.StringFromElement(res))
 
       a = metadata.albums[album.guid]
-      a.title = res.xpath('//Directory[@type="album"]')[0].get('title')
+      if a.title is not None:
+        a.title = res.xpath('//Directory[@type="album"]')[0].get('title')
       a.summary = res.xpath('//Directory[@type="album"]')[0].get('summary')
       a.studio = res.xpath('//Directory[@type="album"]')[0].get('studio')
       a.originally_available_at = Datetime.ParseDate(res.xpath('//Directory[@type="album"]')[0].get('year'))
