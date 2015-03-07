@@ -20,61 +20,93 @@ class GracenoteArtistAgent(Agent.Artist):
   languages = [Locale.Language.English,Locale.Language.NoLanguage]
   version = 2
 
-  def search(self, results, tree, hints, lang='en', manual=False):
+  def search(self, results, tree, hints, lang='en', manual=False, partial=False):
 
-    if DEBUG:
-      Log('tree -> albums: %s, all_parts: %d, children: %d, guid: %s, id: %s, index: %s, originally_available_at: %s, title: %s' % (tree.albums, len(tree.all_parts()), len(tree.children), tree.guid, tree.id, tree.index, tree.originally_available_at, tree.title))
+    if Prefs['debug']:
+      Log('tree -> albums: %s, all_parts: %d, children: %d, guid: %s, id: %s, originally_available_at: %s, title: %s' % (tree.albums, len(tree.all_parts()), len(tree.children), tree.guid, tree.id, tree.originally_available_at, tree.title))
       Log('hints -> album: %s, artist: %s, filename: %s, guid: %s, hash: %s, id: %s, index: %s, originally_available_at: %s, parent_metadata: %s, primary_agent: %s' % (hints.album, hints.artist, hints.filename, hints.guid, hints.hash, hints.id, hints.index, hints.originally_available_at, hints.parent_metadata, hints.primary_agent))
 
-    if len(tree.albums) > 1:
-      Log('Multi-album search request (%d albums) not yet implemented.' % len(tree.albums))
-      return
+    album_results = []
+    artist_guids = []
+    for j, album in enumerate(tree.albums.values()):
+      args = {}
+      for i, track in enumerate(album.children):
+        args['tracks[%d].path' % i]        = track.items[0].parts[0].file
+        args['tracks[%d].userData' % i]    = track.id
+        args['tracks[%d].track' % i]       = track.title
+        if hasattr(track, 'originalTitle'):
+          args['tracks[%d].artist' % i]    = track.originalTitle
+        args['tracks[%d].albumArtist' % i] = tree.title
+        args['tracks[%d].album' % i]       = tree.albums.values()[0].title
+        if hasattr(track, 'index'):
+          args['tracks[%d].index' % i]     = track.index
+        args['lang']                       = lang
 
-    Log('Running single-item search with artist: %s, album: %s (%d tracks)' % (tree.title, tree.albums.values()[0].title, len(tree.all_parts())))
+      querystring = urlencode(args).replace('%5B','[').replace('%5D',']')
+      url = 'http://127.0.0.1:32400/services/gracenote/search?fingerprint=1&' + querystring
+      
+      try:
+        res = XML.ElementFromURL(url)
+        first_track = res.xpath('//Track')[0]
+      except Exception, e:
+        Log('Exception running Gracenote search: ' + str(e))
+        return
 
-    args = {}
-    for i, track in enumerate(tree.albums.values()[0].children):
-      args['tracks[%d].path' % i]        = track.items[0].parts[0].file
-      args['tracks[%d].userData' % i]    = track.id
-      args['tracks[%d].track' % i]       = track.title
-      if hasattr(track, 'originalTitle'):
-        args['tracks[%d].artist' % i]    = track.originalTitle
-      args['tracks[%d].albumArtist' % i] = tree.title
-      args['tracks[%d].album' % i]       = tree.albums.values()[0].title
-      args['tracks[%d].index' % i]       = track.index
-      args['lang']                       = lang
+      # Go back and get the full album for more reliable metadata and so we can populate any missing tracks in the SearchResult.
+      album_guid_consensus = Counter([t.get('parentGUID') for t in res.xpath('//Track')]).most_common()[0][0]
+      Log('Got consensus on album GUID: %s' % album_guid_consensus)
+      album_res = XML.ElementFromURL('http://127.0.0.1:32400/services/gracenote/update?guid=' + String.URLEncode(album_guid_consensus))
+      album_elm = album_res.xpath('//Directory')[0]
 
-    querystring = urlencode(args).replace('%5B','[').replace('%5D',']')
-    url = 'http://127.0.0.1:32400/services/gracenote/search?fingerprint=1&' + querystring
-    
-    try:
-      res = XML.ElementFromURL(url)
-      # Log(XML.StringFromElement(res))
-      first_track = res.xpath('//Track')[0]
-    except Exception, e:
-      Log('Exception running Gracenote search: ' + str(e))
-      return
+      # No album art from gracenote, clear out the thumb.
+      thumb = album_elm.get('thumb')
+      if thumb == 'http://': 
+        thumb = ''
 
-    # Go back and get the full album for more reliable metadata and so we can populate any missing tracks in the SearchResult.
-    album_guid_consensus = Counter([t.get('parentGUID') for t in res.xpath('//Track')]).most_common()[0][0]
-    Log('Got consensus on album GUID: ' + album_guid_consensus)
-    album_res = XML.ElementFromURL('http://127.0.0.1:32400/services/gracenote/update?guid=' + String.URLEncode(album_guid_consensus))
-    album_elm = album_res.xpath('//Directory')[0]
-    # Log(XML.StringFromElement(album_elm))
+      album_result = SearchResult(id=tree.albums.values()[0].id, type='album', parentName=album_elm.get('parentTitle'), name=album_elm.get('title'), guid=album_guid_consensus, thumb=thumb, year=album_elm.get('year'), parentGUID=album_elm.get('parentGUID'), parentID=tree.id, score=100)
 
-    # No album art from gracenote, clear out the thumb.
-    thumb = album_elm.get('thumb')
-    if thumb == 'http://': 
-      thumb = ''
+      matched_guids = [t.get('guid') for t in res.xpath('//Track')]
+      for track in sorted(album_res.xpath('//Track'), key=lambda i: int(i.get('index'))):
+        matched = '1' if track.get('guid') in matched_guids else '0'
+        album_result.add(SearchResult(matched=matched, type='track', name=track.get('title'), id=track.get('userData'), guid=track.get('guid'), index=track.get('index')))
 
-    album = SearchResult(id=tree.albums.values()[0].id, type='album', parentName=album_elm.get('parentTitle'), name=album_elm.get('title'), guid=album_guid_consensus, thumb=thumb, year=album_elm.get('year'), parentGUID=album_elm.get('parentGUID'), parentID=tree.id, score=100)
+      Log('Got album result: %s' % album_result.name)
+      album_results.append(album_result)
+      artist_guids.append(album_elm.get('parentGUID'))
 
-    matched_guids = [t.get('guid') for t in res.xpath('//Track')]
-    for track in sorted(album_res.xpath('//Track'), key=lambda i: int(i.get('index'))):
-      matched = '1' if track.get('guid') in matched_guids else '0'
-      album.add(SearchResult(matched=matched, type='track', name=track.get('title'), id=track.get('userData'), guid=track.get('guid'), index=track.get('index')))
+      # Limit to five albums for artist consensus.
+      # TODO: This may be too many, it takes a while.
+      #
+      if j > 4:
+        break
 
-    results.add(album)
+    # Album search.
+    if partial:
+      for album_result in album_results:
+        results.add(album_result)
+
+    # If this is not a "partial" search it's an artist search, so add the appropriate SearchResult in the hierarchy.
+    else:
+
+      artist_guid_counter = Counter(artist_guids).most_common()
+      Log(str(artist_guid_counter))
+      artist_guid_consensus = artist_guid_counter[0][0]
+      Log('Got consensus on artist GUID: %s' % artist_guid_consensus)  # TODO: Gracenote is returning all different GnUId's for these :(
+      for album_result in album_results:
+        if album_result.parentGUID == artist_guid_consensus:
+          artist_name = album_result.parentName
+          Log('Got artist result: %s' % artist_name)
+          break
+      
+      # Score based on the proportion of albums that matched.
+      artist_score = int(50 + 50 * (artist_guid_counter[0][1] / float(len(tree.albums))))
+      artist_result = SearchResult(id=tree.id, type='artist', name=artist_name, guid=artist_guid_consensus, score=artist_score)
+
+      for album_result in album_results:
+        artist_result.add(album_result)
+
+      results.add(artist_result)
+
 
   def update(self, metadata, media, lang='en', child_guid=None):
 
