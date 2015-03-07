@@ -95,8 +95,14 @@ class GracenoteArtistAgent(Agent.Artist):
       Log(XML.StringFromElement(res))
 
     # Artist name.
+    artist_name = res.xpath('//Directory[@type="album"]')[0].get('parentTitle')
     if metadata.title is None:
-      metadata.title = res.xpath('//Directory[@type="album"]')[0].get('parentTitle')
+      metadata.title = artist_name
+
+    # If the artist name doesn't match the one obtained from the album lookup, don't continue updating.  Avoids wonk following re-parenting/renaming.
+    if media.title != artist_name:
+      Log('Artist names didn\'t match (%s vs. %s), aborting.' % (media.title, artist_name))
+      return
 
     # Artist bio.
     metadata.summary = res.xpath('//Directory[@type="album"]')[0].get('parentSummary')
