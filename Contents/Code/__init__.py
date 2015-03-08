@@ -136,32 +136,48 @@ class GracenoteArtistAgent(Agent.Artist):
     if metadata.title is None:
       metadata.title = artist_name
 
-    # If the artist name doesn't match the one obtained from the album lookup, don't continue updating.  Avoids wonk following re-parenting/renaming.
-    if media.title != artist_name:
-      Log('Artist names didn\'t match (%s vs. %s), aborting.' % (media.title, artist_name))
-      return
-
-    # Artist bio.
-    metadata.summary = res.xpath('//Directory[@type="album"]')[0].get('parentSummary')
-
-    # Artist country.
-    metadata.countries.clear()
-    metadata.countries.add(res.xpath('//Directory[@type="album"]')[0].get('parentCountry'))
-
-    # Primary artist poster.
     posters = []
-    gracenote_poster = res.xpath('//Directory[@type="album"]')[0].get('parentThumb')
-    if len(gracenote_poster) > 0:
-      posters.append(gracenote_poster)
+    arts = []
 
-    # Find posters from fallback sources.
-    album_titles = [a.title for a in media.children]
-    if len(posters) == 0 or DEBUG:
-      find_artist_posters(posters, metadata.title, album_titles, lang)
+    # Special art for VA.
+    if metadata.title == 'Various Artists':
+      posters.append('http://music.plex.tv/various_artists_poster.jpg')
+      arts.append('http://music.plex.tv/various_artists_art.jpg')
 
-    # Placeholder image if we're in DEBUG mode.
-    if len(posters) == 0 and DEBUG:
-      posters.append('https://dl.dropboxusercontent.com/u/8555161/no_artist.png')
+    # Do nothing for unknown.
+    elif metadata.title == '[Unknown Artist]':
+      pass
+
+    else:
+
+      # If the artist name doesn't match the one obtained from the album lookup, don't continue updating.  Avoids wonk following re-parenting/renaming.
+      if media.title != artist_name:
+        Log('Artist names didn\'t match (%s vs. %s), aborting.' % (media.title, artist_name))
+        return
+
+      # Artist bio.
+      metadata.summary = res.xpath('//Directory[@type="album"]')[0].get('parentSummary')
+
+      # Artist country.
+      metadata.countries.clear()
+      metadata.countries.add(res.xpath('//Directory[@type="album"]')[0].get('parentCountry'))
+
+      # Primary artist poster.
+      gracenote_poster = res.xpath('//Directory[@type="album"]')[0].get('parentThumb')
+      if len(gracenote_poster) > 0:
+        posters.append(gracenote_poster)
+
+      # Find posters from fallback sources.
+      album_titles = [a.title for a in media.children]
+      if len(posters) == 0 or DEBUG:
+        find_artist_posters(posters, metadata.title, album_titles, lang)
+
+      # Placeholder image if we're in DEBUG mode.
+      if len(posters) == 0 and DEBUG:
+        posters.append('https://dl.dropboxusercontent.com/u/8555161/no_artist.png')
+
+      # Find artist art.
+      find_artist_art(arts, metadata.title, album_titles, lang)
 
     # Add posters.
     valid_keys = []
@@ -185,10 +201,8 @@ class GracenoteArtistAgent(Agent.Artist):
     
     metadata.posters.validate_keys(valid_keys)
 
-    # Find and add artist art.
-    arts = []
+    # Add art.
     valid_keys = []
-    find_artist_art(arts, metadata.title, album_titles, lang)
     for i, art in enumerate(arts):
       try:
         metadata.art[art[0]] = Proxy.Preview(HTTP.Request(art[1]), sort_order='%02d' % (i + 1))
