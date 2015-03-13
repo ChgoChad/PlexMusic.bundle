@@ -162,15 +162,14 @@ class GracenoteArtistAgent(Agent.Artist):
       metadata.countries.clear()
       metadata.countries.add(res.xpath('//Directory[@type="album"]')[0].get('parentCountry'))
 
-      # Primary artist poster.
+      # Find posters from non-gracenote sources.
+      album_titles = [a.title for a in media.children]
+      find_artist_posters(posters, metadata.title, album_titles, lang)
+
+      # Add gracenote poster if present.
       gracenote_poster = res.xpath('//Directory[@type="album"]')[0].get('parentThumb')
       if len(gracenote_poster) > 0:
         posters.append(gracenote_poster)
-
-      # Find posters from fallback sources.
-      album_titles = [a.title for a in media.children]
-      if len(posters) == 0 or DEBUG:
-        find_artist_posters(posters, metadata.title, album_titles, lang)
 
       # Placeholder image if we're in DEBUG mode.
       if len(posters) == 0 and DEBUG:
