@@ -65,7 +65,7 @@ class GracenoteArtistAgent(Agent.Artist):
 
       track_results = []
       matched_guids = [t.get('guid') for t in res.xpath('//Track')]
-      for track in sorted(album_res.xpath('//Track'), key=lambda i: int(i.get('index'))):
+      for track in sorted(res.xpath('//Track'), key=lambda i: int(i.get('index'))):
         matched = '1' if track.get('guid') in matched_guids else '0'
         track_results.append(SearchResult(matched=matched, type='track', name=track.get('title'), id=track.get('userData'), guid=track.get('guid'), index=track.get('index')))
 
