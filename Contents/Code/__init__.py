@@ -141,8 +141,8 @@ class GracenoteArtistAgent(Agent.Artist):
 
     # Special art for VA.
     if metadata.title == 'Various Artists':
-      posters.append('http://music.plex.tv/various_artists_poster.jpg')
-      arts.append('http://music.plex.tv/various_artists_art.jpg')
+      posters.append('http://music.plex.tv/pixogs/various_artists_poster.jpg')
+      arts.append('http://music.plex.tv/pixogs/various_artists_art.jpg')
 
     # Do nothing for unknown.
     elif metadata.title == '[Unknown Artist]':
