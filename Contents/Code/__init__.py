@@ -269,6 +269,7 @@ class GracenoteAlbumAgent(Agent.Album):
       i = track.get('index')
       t = metadata.tracks[i]
       
+      t.guid = track.get('guid')
       t.name = track.get('title')
       t.tempo = int(track.get('bpm') or -1)
 
