@@ -15,63 +15,63 @@ def Start():
 
 def album_search(tree, album, lang, album_results, artist_guids=[]):
 
-      args = {}
+  args = {}
 
-      if hasattr(album, 'artist'):
-        artist = album.artist
-        title = album.title
-      else:
-        artist = tree.title
-        title = tree.albums.values()[0].title
+  if hasattr(album, 'artist'):
+    artist = album.artist
+    title = album.title
+  else:
+    artist = tree.title
+    title = tree.albums.values()[0].title
 
-      for i, track in enumerate(album.children):
-        args['tracks[%d].path' % i]        = track.items[0].parts[0].file
-        args['tracks[%d].userData' % i]    = track.id
-        args['tracks[%d].track' % i]       = track.title
-        if hasattr(track, 'originalTitle'):
-          args['tracks[%d].artist' % i]    = track.originalTitle
-        args['tracks[%d].albumArtist' % i] = artist
-        args['tracks[%d].album' % i]       = title
-        if hasattr(track, 'index'):
-          args['tracks[%d].index' % i]     = track.index
-        args['lang']                       = lang
+  for i, track in enumerate(album.children):
+    args['tracks[%d].path' % i]        = track.items[0].parts[0].file
+    args['tracks[%d].userData' % i]    = track.id
+    args['tracks[%d].track' % i]       = track.title
+    if hasattr(track, 'originalTitle'):
+      args['tracks[%d].artist' % i]    = track.originalTitle
+    args['tracks[%d].albumArtist' % i] = artist
+    args['tracks[%d].album' % i]       = title
+    if hasattr(track, 'index'):
+      args['tracks[%d].index' % i]     = track.index
+    args['lang']                       = lang
 
-      querystring = urlencode(args).replace('%5B','[').replace('%5D',']')
-      url = 'http://127.0.0.1:32400/services/gracenote/search?fingerprint=1&' + querystring
-      
-      try:
-        res = XML.ElementFromURL(url)
-        first_track = res.xpath('//Track')[0]
-      except Exception, e:
-        Log('Exception running Gracenote search: ' + str(e))
-        return
+  querystring = urlencode(args).replace('%5B','[').replace('%5D',']')
+  url = 'http://127.0.0.1:32400/services/gracenote/search?fingerprint=1&' + querystring
+  
+  try:
+    res = XML.ElementFromURL(url)
+    first_track = res.xpath('//Track')[0]
+  except Exception, e:
+    Log('Exception running Gracenote search: ' + str(e))
+    return
 
-      # Go back and get the full album for more reliable metadata and so we can populate any missing tracks in the SearchResult.
-      album_guid_consensus = Counter([t.get('parentGUID') for t in res.xpath('//Track')]).most_common()[0][0]
-      Log('Got consensus on album GUID: %s' % album_guid_consensus)
-      album_res = XML.ElementFromURL('http://127.0.0.1:32400/services/gracenote/update?guid=' + String.URLEncode(album_guid_consensus))
-      album_elm = album_res.xpath('//Directory')[0]
+  # Go back and get the full album for more reliable metadata and so we can populate any missing tracks in the SearchResult.
+  album_guid_consensus = Counter([t.get('parentGUID') for t in res.xpath('//Track')]).most_common()[0][0]
+  Log('Got consensus on album GUID: %s' % album_guid_consensus)
+  album_res = XML.ElementFromURL('http://127.0.0.1:32400/services/gracenote/update?guid=' + String.URLEncode(album_guid_consensus))
+  album_elm = album_res.xpath('//Directory')[0]
 
-      # No album art from gracenote, clear out the thumb.
-      thumb = album_elm.get('thumb')
-      if thumb == 'http://': 
-        thumb = ''
+  # No album art from gracenote, clear out the thumb.
+  thumb = album_elm.get('thumb')
+  if thumb == 'http://': 
+    thumb = ''
 
-      track_results = []
-      matched_guids = [t.get('guid') for t in res.xpath('//Track')]
-      for track in sorted(res.xpath('//Track'), key=lambda i: int(i.get('index'))):
-        matched = '1' if track.get('guid') in matched_guids else '0'
-        track_results.append(SearchResult(matched=matched, type='track', name=track.get('title'), id=track.get('userData'), guid=track.get('guid'), index=track.get('index')))
+  track_results = []
+  matched_guids = [t.get('guid') for t in res.xpath('//Track')]
+  for track in sorted(res.xpath('//Track'), key=lambda i: int(i.get('index'))):
+    matched = '1' if track.get('guid') in matched_guids else '0'
+    track_results.append(SearchResult(matched=matched, type='track', name=track.get('title'), id=track.get('userData'), guid=track.get('guid'), index=track.get('index')))
 
-      # Score based on number of matched tracks.  Used when checking against a threshold for automatically matching after renaming/reparenting.
-      album_score = int((len([t for t in track_results if t.matched == '1']) / float(len(track_results))) * 100)
-      album_result = SearchResult(id=album.id, type='album', parentName=album_elm.get('parentTitle'), name=album_elm.get('title'), guid=album_guid_consensus, thumb=thumb, year=album_elm.get('year'), parentGUID=album_elm.get('parentGUID'), score=album_score)
-      for track_result in track_results:
-        album_result.add(track_result)
+  # Score based on number of matched tracks.  Used when checking against a threshold for automatically matching after renaming/reparenting.
+  album_score = int((len([t for t in track_results if t.matched == '1']) / float(len(track_results))) * 100)
+  album_result = SearchResult(id=album.id, type='album', parentName=album_elm.get('parentTitle'), name=album_elm.get('title'), guid=album_guid_consensus, thumb=thumb, year=album_elm.get('year'), parentGUID=album_elm.get('parentGUID'), score=album_score)
+  for track_result in track_results:
+    album_result.add(track_result)
 
-      Log('Got album result: %s (score: %d)' % (album_result.name, album_result.score))
-      album_results.append(album_result)
-      artist_guids.append(album_elm.get('parentGUID'))
+  Log('Got album result: %s (score: %d)' % (album_result.name, album_result.score))
+  album_results.append(album_result)
+  artist_guids.append(album_elm.get('parentGUID'))
 
 
 class GracenoteArtistAgent(Agent.Artist):
@@ -113,106 +113,102 @@ class GracenoteArtistAgent(Agent.Artist):
 
 
   def update(self, metadata, media, lang):
-    pass
 
-    # Log('Updating: %s (GUID: %s)' % (media.title, media.guid))
+    Log('Updating: %s (GUID: %s)' % (media.title, media.guid))
 
-    # # Find child albums and check that we have at least one Gracenote guid to work with.
-    # child_guids = [c.guid for c in media.children if c.guid.startswith('com.plexapp.agents.plexmusic://gracenote/')]
-    # if not child_guids:
-    #   Log('Couldn\'t find an album by this artist with a Gracenote guid, aborting.')
-    #   return
+    # Find child albums and check that we have at least one Gracenote guid to work with.
+    child_guids = [c.guid for c in media.children if c.guid.startswith('com.plexapp.agents.plexmusic://gracenote/')]
+    if not child_guids:
+      Log('Couldn\'t find an album by this artist with a Plex Music guid, aborting.')
+      return
 
-    # # Artist data. Fetch an album (use the given child_guid if we have it) and use the artist data from that.
-    # res = XML.ElementFromURL('http://127.0.0.1:32400/services/gracenote/update?guid=' + String.URLEncode(child_guid or child_guids[0]))
+    # Artist data. Fetch an album (use the given child_guid if we have it) and use the artist data from that.
+    res = XML.ElementFromURL('http://127.0.0.1:32400/services/gracenote/update?guid=' + String.URLEncode(child_guids[0]))
 
-    # if DEBUG:
-    #   Log('Raw update result:')
-    #   Log(XML.StringFromElement(res))
+    if DEBUG:
+      Log('Raw update result:')
+      Log(XML.StringFromElement(res))
 
-    # # Artist name.
-    # artist_name = res.xpath('//Directory[@type="album"]')[0].get('parentTitle')
-    # if metadata.title is None:
-    #   metadata.title = artist_name
+    # Artist name.
+    artist_name = res.xpath('//Directory[@type="album"]')[0].get('parentTitle')
+    if metadata.title is None:
+      metadata.title = artist_name
 
-    # posters = []
-    # arts = []
+    posters = []
+    arts = []
 
-    # # Special art for VA.
-    # if metadata.title == 'Various Artists':
-    #   posters.append('http://music.plex.tv/pixogs/various_artists_poster.jpg')
-    #   arts.append('http://music.plex.tv/pixogs/various_artists_art.jpg')
+    # Special art for VA.
+    if metadata.title == 'Various Artists':
+      posters.append('http://music.plex.tv/pixogs/various_artists_poster.jpg')
+      arts.append('http://music.plex.tv/pixogs/various_artists_art.jpg')
 
-    # # Do nothing for unknown.
-    # elif metadata.title == '[Unknown Artist]':
-    #   pass
+    # Do nothing for unknown.
+    elif metadata.title == '[Unknown Artist]':
+      pass
 
-    # else:
+    else:
 
-    #   # Artist bio.
-    #   metadata.summary = res.xpath('//Directory[@type="album"]')[0].get('parentSummary')
+      # Artist bio.
+      metadata.summary = res.xpath('//Directory[@type="album"]')[0].get('parentSummary')
 
-    #   # Artist country.
-    #   metadata.countries.clear()
-    #   metadata.countries.add(res.xpath('//Directory[@type="album"]')[0].get('parentCountry'))
+      # Artist country.
+      metadata.countries.clear()
+      metadata.countries.add(res.xpath('//Directory[@type="album"]')[0].get('parentCountry'))
 
-    #   # Find posters from non-gracenote sources.
-    #   album_titles = [a.title for a in media.children]
-    #   find_artist_posters(posters, metadata.title, album_titles, lang)
+      # Find posters from non-gracenote sources.
+      album_titles = [a.title for a in media.children]
+      find_artist_posters(posters, metadata.title, album_titles, lang)
 
-    #   # Add gracenote poster if present.
-    #   gracenote_poster = res.xpath('//Directory[@type="album"]')[0].get('parentThumb')
-    #   if len(gracenote_poster) > 0:
-    #     posters.append(gracenote_poster)
+      # Add gracenote poster if present.
+      gracenote_poster = res.xpath('//Directory[@type="album"]')[0].get('parentThumb')
+      if len(gracenote_poster) > 0:
+        posters.append(gracenote_poster)
 
-    #   # Placeholder image if we're in DEBUG mode.
-    #   if len(posters) == 0 and DEBUG:
-    #     posters.append('https://dl.dropboxusercontent.com/u/8555161/no_artist.png')
+      # Placeholder image if we're in DEBUG mode.
+      if len(posters) == 0 and DEBUG:
+        posters.append('https://dl.dropboxusercontent.com/u/8555161/no_artist.png')
 
-    #   # Find artist art.
-    #   find_artist_art(arts, metadata.title, album_titles, lang)
+      # Find artist art.
+      find_artist_art(arts, metadata.title, album_titles, lang)
 
-    # # Add posters.
-    # valid_keys = []
-    # for i, poster in enumerate(posters):
-    #   try:
-    #     poster_req = HTTP.Request(poster)
-    #     poster_req.load()
-    #     poster_data = poster_req.content
-    #     poster_hash = Hash.MD5(poster_data)
+    # Add posters.
+    valid_keys = []
+    for i, poster in enumerate(posters):
+      try:
+        poster_req = HTTP.Request(poster)
+        poster_req.load()
+        poster_data = poster_req.content
+        poster_hash = Hash.MD5(poster_data)
 
-    #     # Avoid the Last.fm placeholder image.
-    #     if poster_hash != '1c117ac7c5303f4a273546e0965c5573' and poster_hash != '833dccc04633e5616e9f34ae5d5ba057':
-    #       Log('Adding poster with hash: %s' % poster_hash)
-    #       metadata.posters[poster] = Proxy.Media(poster_data, sort_order='%02d' % (i + 1))
-    #       valid_keys.append(poster)
-    #     else:
-    #       Log('Skipping Last.fm Red Poster of Death: %s' % poster)
+        # Avoid the Last.fm placeholder image.
+        if poster_hash != '1c117ac7c5303f4a273546e0965c5573' and poster_hash != '833dccc04633e5616e9f34ae5d5ba057':
+          Log('Adding poster with hash: %s' % poster_hash)
+          metadata.posters[poster] = Proxy.Media(poster_data, sort_order='%02d' % (i + 1))
+          valid_keys.append(poster)
+        else:
+          Log('Skipping Last.fm Red Poster of Death: %s' % poster)
 
-    #   except Exception, e:
-    #     Log('Couldn\'t add poster (%s): %s' % (poster, str(e)))
+      except Exception, e:
+        Log('Couldn\'t add poster (%s): %s' % (poster, str(e)))
     
-    # metadata.posters.validate_keys(valid_keys)
+    metadata.posters.validate_keys(valid_keys)
 
-    # # Add art.
-    # valid_keys = []
-    # for i, art in enumerate(arts):
-    #   try:
-    #     metadata.art[art[0]] = Proxy.Preview(HTTP.Request(art[1]), sort_order='%02d' % (i + 1))
-    #     valid_keys.append(art[0])
-    #   except Exception, e:
-    #     Log('Couldn\'t add art (%s): %s' % (art[0], str(e)))
+    # Add art.
+    valid_keys = []
+    for i, art in enumerate(arts):
+      try:
+        metadata.art[art[0]] = Proxy.Preview(HTTP.Request(art[1]), sort_order='%02d' % (i + 1))
+        valid_keys.append(art[0])
+      except Exception, e:
+        Log('Couldn\'t add art (%s): %s' % (art[0], str(e)))
 
-    # metadata.art.validate_keys(valid_keys)
-
-    # # Album data.
-    # for album in media.children:
-
+    metadata.art.validate_keys(valid_keys)
 
 
 class GracenoteAlbumAgent(Agent.Album):
 
   name = 'Plex Premium Music'
+  languages = [Locale.Language.English,Locale.Language.NoLanguage]
 
 
   def search(self, results, media, lang, manual, tree=None):
@@ -223,63 +219,60 @@ class GracenoteAlbumAgent(Agent.Album):
 
 
   def update(self, metadata, media, lang):
-    pass
-      # Log('Updating album: ' + album.title)
-      # Log('With guid: ' + album.guid)
 
-      # if not 'com.plexapp.agents.plexmusic://gracenote/' in album.guid:
-      #   Log('Skipping non-Gracenote album')
-      #   continue
+    Log('Updating album: ' + media.title)
+    Log('With guid: ' + media.guid)
 
-      # try:
-      #   res = XML.ElementFromURL('http://127.0.0.1:32400/services/gracenote/update?guid=' + String.URLEncode(album.guid))
-      # except Exception, e:
-      #   Log('Error issuing album update request: ' + str(e))
-      #   continue
+    if not 'com.plexapp.agents.plexmusic://gracenote/' in media.guid:
+      Log('Skipping non-Gracenote album')
+      return
+
+    try:
+      res = XML.ElementFromURL('http://127.0.0.1:32400/services/gracenote/update?guid=' + String.URLEncode(media.guid))
+    except Exception, e:
+      Log('Error issuing album update request: ' + str(e))
+      return
+    
+    if DEBUG:
+      Log('Got album metadata:\n' + XML.StringFromElement(res))
+
+    if metadata.title is None:
+      metadata.title = res.xpath('//Directory[@type="album"]')[0].get('title')
+    metadata.summary = res.xpath('//Directory[@type="album"]')[0].get('summary')
+    metadata.studio = res.xpath('//Directory[@type="album"]')[0].get('studio')
+    metadata.originally_available_at = Datetime.ParseDate(res.xpath('//Directory[@type="album"]')[0].get('year'))
+
+    # Posters.
+    try:
+      poster_url = res.xpath('//Directory[@type="album"]')[0].get('thumb')
+      if len(poster_url) > 0:
+        metadata.posters[0] = Proxy.Media(HTTP.Request(poster_url))
+    except Exception, e:
+      Log('Couldn\'t add album art: ' + str(e))
+
+    if DEBUG and len(metadata.posters) == 0:
+      a.posters[0] = Proxy.Media(HTTP.Request('https://dl.dropboxusercontent.com/u/8555161/no_album.png'))
+    
+    # Genres.
+    metadata.genres.clear()
+    genres = [genre for genre in res.xpath('//Directory[@type="album"]/Genre/@tag')]
+    if len(genres) > 0 and Prefs['genre_level'] == '10':
+      metadata.genres.add(genres[0])
+    elif len(genres) > 1 and Prefs['genre_level'] == '75':
+      metadata.genres.add(genres[1])
+    elif len(genres) > 2 and Prefs['genre_level'] == '500':
+      metadata.genres.add(genres[2])
+
+    # Add the tracks.
+    for track in res.xpath('//Track'):
       
-      # if DEBUG:
-      #   Log('Got album metadata:\n' + XML.StringFromElement(res))
-
-      # a = metadata.albums[album.guid]
-      # if a.title is None:
-      #   a.title = res.xpath('//Directory[@type="album"]')[0].get('title')
-      # a.summary = res.xpath('//Directory[@type="album"]')[0].get('summary')
-      # a.studio = res.xpath('//Directory[@type="album"]')[0].get('studio')
-      # a.originally_available_at = Datetime.ParseDate(res.xpath('//Directory[@type="album"]')[0].get('year'))
-
-      # # Posters.
-      # try:
-      #   poster_url = res.xpath('//Directory[@type="album"]')[0].get('thumb')
-      #   if len(poster_url) > 0:
-      #     a.posters[0] = Proxy.Media(HTTP.Request(poster_url))
-      # except Exception, e:
-      #   Log('Couldn\'t add album art: ' + str(e))
-
-      # if DEBUG and len(a.posters) == 0:
-      #   a.posters[0] = Proxy.Media(HTTP.Request('https://dl.dropboxusercontent.com/u/8555161/no_album.png'))
+      i = track.get('index')
+      t = metadata.tracks[i]
       
-      # # Genres.
-      # a.genres.clear()
-      # genres = [genre for genre in res.xpath('//Directory[@type="album"]/Genre/@tag')]
-      # if len(genres) > 0 and Prefs['genre_level'] == '10':
-      #   a.genres.add(genres[0])
-      # elif len(genres) > 1 and Prefs['genre_level'] == '75':
-      #   a.genres.add(genres[1])
-      # elif len(genres) > 2 and Prefs['genre_level'] == '500':
-      #   a.genres.add(genres[2])
+      t.name = track.get('title')
+      t.tempo = int(track.get('bpm') or -1)
 
-      # # Add the tracks.
-      # for track in res.xpath('//Track'):
-        
-      #   i = track.get('index')
-      #   t = a.tracks[i]
-        
-      #   t.name = track.get('title')
-      #   t.tempo = int(track.get('bpm') or -1)
-
-      #   # Moods.
-      #   t.moods.clear()
-      #   for mood in track.xpath('./Mood/@tag'):
-      #     t.moods.add(mood)
-
-
+      # Moods.
+      t.moods.clear()
+      for mood in track.xpath('./Mood/@tag'):
+        t.moods.add(mood)
