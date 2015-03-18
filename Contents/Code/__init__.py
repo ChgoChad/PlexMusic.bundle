@@ -41,7 +41,12 @@ def album_search(tree, album, lang, album_results, artist_guids=[], fingerprint=
   
   try:
     res = XML.ElementFromURL(url)
-    first_track = res.xpath('//Track')[0]
+    track_xml = res.xpath('//Track')
+    if len(track_xml) > 0:
+      first_track = [0]
+    else:
+      Log('No matches from Gracenote search')
+      return
   except Exception, e:
     Log('Exception running Gracenote search: ' + str(e))
     return
@@ -80,6 +85,10 @@ class GracenoteArtistAgent(Agent.Artist):
   languages = [Locale.Language.English,Locale.Language.NoLanguage]
 
   def search(self, results, media, lang='en', manual=False, tree=None):
+
+    # Don't do automatic matching for this agent.
+    if not manual:
+      return
 
     if Prefs['debug']:
       Log('tree -> albums: %s, all_parts: %d, children: %d, guid: %s, id: %s, originally_available_at: %s, title: %s' % (tree.albums, len(tree.all_parts()), len(tree.children), tree.guid, tree.id, tree.originally_available_at, tree.title))
@@ -211,7 +220,12 @@ class GracenoteAlbumAgent(Agent.Album):
   languages = [Locale.Language.English,Locale.Language.NoLanguage]
 
 
-  def search(self, results, media, lang, manual, tree=None):
+  def search(self, results, media, lang, manual=False, tree=None):
+    
+    # Don't do automatic matching for this agent.
+    if not manual:
+      return
+
     album_results = []
     for fingerprint in ['0', '1']:
       album_search(tree, media, lang, album_results, fingerprint=fingerprint)
