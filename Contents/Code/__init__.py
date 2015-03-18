@@ -13,7 +13,7 @@ DEBUG = Prefs['debug']
 def Start():
   HTTP.CacheTime = 30
 
-def album_search(tree, album, lang, album_results, artist_guids=[]):
+def album_search(tree, album, lang, album_results, artist_guids=[], fingerprint='1'):
 
   args = {}
 
@@ -37,7 +37,7 @@ def album_search(tree, album, lang, album_results, artist_guids=[]):
     args['lang']                       = lang
 
   querystring = urlencode(args).replace('%5B','[').replace('%5D',']')
-  url = 'http://127.0.0.1:32400/services/gracenote/search?fingerprint=1&' + querystring
+  url = 'http://127.0.0.1:32400/services/gracenote/search?fingerprint=%s&%s' % (fingerprint, querystring)
   
   try:
     res = XML.ElementFromURL(url)
@@ -213,9 +213,13 @@ class GracenoteAlbumAgent(Agent.Album):
 
   def search(self, results, media, lang, manual, tree=None):
     album_results = []
-    album_search(tree, media, lang, album_results)
-    for album_result in album_results:
-      results.add(album_result)
+    for fingerprint in ['0', '1']:
+      album_search(tree, media, lang, album_results, fingerprint=fingerprint)
+      seen = []
+      for album_result in album_results:
+        if not album_result.guid in seen:
+          results.add(album_result)
+          seen.append(album_result.guid)
 
 
   def update(self, metadata, media, lang):
