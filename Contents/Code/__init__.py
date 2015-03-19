@@ -281,18 +281,13 @@ class GracenoteAlbumAgent(Agent.Album):
     elif len(genres) > 2 and Prefs['genre_level'] == '500':
       metadata.genres.add(genres[2])
 
-    guids = {track.guid : track.index for (key, track) in media.tracks.items()}
-    Log(str(guids))
-
     # Add the tracks.
     for track in res.xpath('//Track'):
       
-      guid = track.get('guid')
-      t = metadata.tracks[guids[guid]]
+      i = track.get('index')
+      t = metadata.tracks[i]
       
-      Log('track guid: %s mapped to track %s' % (guid, guids['guid']))
-
-      t.guid = guid
+      t.guid = track.get('guid')
       t.name = track.get('title')
       t.tempo = int(track.get('bpm') or -1)
 
