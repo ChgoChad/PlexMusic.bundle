@@ -239,9 +239,9 @@ class GracenoteAlbumAgent(Agent.Album):
       album_search(tree, media, lang, album_results, fingerprint=fingerprint)
       seen = []
       for album_result in album_results:
-        if not album_result.guid in seen:
+        if not (album_result.parentName, album_result.name) in seen:
           results.add(album_result)
-          seen.append(album_result.guid)
+          seen.append((album_result.parentName, album_result.name))
 
 
   def update(self, metadata, media, lang):
