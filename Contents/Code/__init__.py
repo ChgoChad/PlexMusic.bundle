@@ -13,7 +13,7 @@ DEBUG = Prefs['debug']
 def Start():
   HTTP.CacheTime = 30
 
-def album_search(tree, album, lang, album_results, artist_guids=[], fingerprint='1'):
+def album_search(tree, album, lang, album_results, artist_guids=[], fingerprint='1', artist_thumbs=[]):
 
   args = {}
 
@@ -62,6 +62,8 @@ def album_search(tree, album, lang, album_results, artist_guids=[], fingerprint=
   if thumb == 'http://': 
     thumb = ''
 
+  artist_thumbs.append(album_elm.get('parentThumb'))
+
   track_results = []
   matched_guids = [t.get('guid') for t in res.xpath('//Track')]
   for track in sorted(res.xpath('//Track'), key=lambda i: int(i.get('index'))):
@@ -95,12 +97,17 @@ class GracenoteArtistAgent(Agent.Artist):
 
     album_results = []
     artist_guids = []
+    artist_thumbs = []
     for j, album in enumerate(tree.albums.values()):
-      album_search(tree, album, lang, album_results, artist_guids)
+      album_search(tree, album, lang, album_results, artist_guids, artist_thumbs=artist_thumbs)
 
       # Limit to five albums for artist consensus. TODO: This may be too many, it takes a while.
       if j > 4:
         break
+
+    if not artist_guids:
+      Log('No Gracenote artists found for %s' % tree.title)
+      return
 
     artist_guid_counter = Counter(artist_guids).most_common()
     artist_guid_consensus = artist_guid_counter[0][0]
@@ -113,7 +120,8 @@ class GracenoteArtistAgent(Agent.Artist):
     # Score based on the proportion of albums that matched.
     artist_score = int(50 + 50 * (artist_guid_counter[0][1] / float(len(tree.albums))))
 
-    artist_result = SearchResult(id=tree.id, type='artist', name=artist_name, guid=artist_guid_consensus, score=artist_score)
+    artist_thumb = artist_thumbs[0] if artist_thumbs else ''
+    artist_result = SearchResult(id=tree.id, type='artist', name=artist_name, guid=artist_guid_consensus, score=artist_score, thumb=artist_thumb)
     for album_result in album_results:
       artist_result.add(album_result)
 
