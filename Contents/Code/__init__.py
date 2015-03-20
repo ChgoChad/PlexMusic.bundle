@@ -277,7 +277,7 @@ class GracenoteAlbumAgent(Agent.Album):
       Log('Couldn\'t add album art: ' + str(e))
 
     if DEBUG and len(metadata.posters) == 0:
-      a.posters[0] = Proxy.Media(HTTP.Request('https://dl.dropboxusercontent.com/u/8555161/no_album.png'))
+      metadata.posters[0] = Proxy.Media(HTTP.Request('https://dl.dropboxusercontent.com/u/8555161/no_album.png'))
     
     # Genres.
     metadata.genres.clear()
