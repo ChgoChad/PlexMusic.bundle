@@ -231,7 +231,7 @@ class GracenoteAlbumAgent(Agent.Album):
   contributes_to = ['com.plexapp.agents.localmedia']
 
 
-  def search(self, results, media, lang, manual=False, tree=None):
+  def search(self, results, media, lang, manual=False, tree=None, primary=False):
     
     # Don't do automatic matching for this agent.
     if not manual:
