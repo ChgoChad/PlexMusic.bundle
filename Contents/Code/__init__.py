@@ -8,6 +8,7 @@ from Utils import normalize_artist_name
 from Artist import find_artist_posters, find_artist_art
 
 DEBUG = Prefs['debug']
+LFM_RED_POSTER_HASHES = ['1c117ac7c5303f4a273546e0965c5573', '833dccc04633e5616e9f34ae5d5ba057']
 
 
 def Start():
@@ -85,12 +86,17 @@ class GracenoteArtistAgent(Agent.Artist):
 
   name = 'Plex Premium Music'
   languages = [Locale.Language.English,Locale.Language.NoLanguage]
+  contributes_to = ['com.plexapp.agents.localmedia']
 
-  def search(self, results, media, lang='en', manual=False, tree=None):
+  def search(self, results, media, lang='en', manual=False, tree=None, primary=True):
 
     # Don't do automatic matching for this agent.
     if not manual:
       return
+
+    # Good match when being used as a secondary agent.
+    if not primary:
+      results.add(SearchResult(id=tree.id, score=100))
 
     if Prefs['debug']:
       Log('tree -> albums: %s, all_parts: %d, children: %d, guid: %s, id: %s, originally_available_at: %s, title: %s' % (tree.albums, len(tree.all_parts()), len(tree.children), tree.guid, tree.id, tree.originally_available_at, tree.title))
@@ -133,24 +139,6 @@ class GracenoteArtistAgent(Agent.Artist):
 
     Log('Updating: %s (GUID: %s)' % (media.title, media.guid))
 
-    # Find child albums and check that we have at least one Gracenote guid to work with.
-    child_guids = [c.guid for c in media.children if c.guid.startswith('com.plexapp.agents.plexmusic://gracenote/')]
-    if not child_guids:
-      Log('Couldn\'t find an album by this artist with a Plex Music guid, aborting.')
-      return
-
-    # Artist data. Fetch an album (use the given child_guid if we have it) and use the artist data from that.
-    res = XML.ElementFromURL('http://127.0.0.1:32400/services/gracenote/update?guid=' + String.URLEncode(child_guids[0]))
-
-    if DEBUG:
-      Log('Raw update result:')
-      Log(XML.StringFromElement(res))
-
-    # Artist name.
-    artist_name = res.xpath('//Directory[@type="album"]')[0].get('parentTitle')
-    if metadata.title is None:
-      metadata.title = artist_name
-
     posters = []
     arts = []
 
@@ -158,12 +146,26 @@ class GracenoteArtistAgent(Agent.Artist):
     if metadata.title == 'Various Artists':
       posters.append('http://music.plex.tv/pixogs/various_artists_poster.jpg')
       arts.append('http://music.plex.tv/pixogs/various_artists_art.jpg')
+      return
 
     # Do nothing for unknown.
     elif metadata.title == '[Unknown Artist]':
-      pass
+      return
 
-    else:
+    gracenote_guids = [c.guid for c in media.children if c.guid.startswith('com.plexapp.agents.plexmusic://gracenote/')]
+    if len(gracenote_guids) > 0:
+  
+      # Fetch an album (use the given child_guid if we have it) and use the artist data from that.
+      res = XML.ElementFromURL('http://127.0.0.1:32400/services/gracenote/update?guid=' + String.URLEncode(gracenote_guids[0]))
+
+      if DEBUG:
+        Log('Raw GN result:')
+        Log(XML.StringFromElement(res))
+
+      # Artist name.
+      artist_name = res.xpath('//Directory[@type="album"]')[0].get('parentTitle')
+      if metadata.title is None:
+        metadata.title = artist_name
 
       # Artist bio.
       metadata.summary = res.xpath('//Directory[@type="album"]')[0].get('parentSummary')
@@ -172,21 +174,21 @@ class GracenoteArtistAgent(Agent.Artist):
       metadata.countries.clear()
       metadata.countries.add(res.xpath('//Directory[@type="album"]')[0].get('parentCountry'))
 
-      # Find posters from non-gracenote sources.
-      album_titles = [a.title for a in media.children]
-      find_artist_posters(posters, metadata.title, album_titles, lang)
-
-      # Add gracenote poster if present.
+      # Artist poster.
       gracenote_poster = res.xpath('//Directory[@type="album"]')[0].get('parentThumb')
-      if len(gracenote_poster) > 0:
-        posters.append(gracenote_poster)
 
-      # Placeholder image if we're in DEBUG mode.
-      if len(posters) == 0 and DEBUG:
-        posters.append('https://dl.dropboxusercontent.com/u/8555161/no_artist.png')
+    # Find artist posters and art from other sources.
+    album_titles = [a.title for a in media.children]
+    find_artist_art(arts, metadata.title, album_titles, lang)
+    find_artist_posters(posters, metadata.title, album_titles, lang)
 
-      # Find artist art.
-      find_artist_art(arts, metadata.title, album_titles, lang)
+    # If we had a Gracenote poster, add it last.
+    if len(gracenote_poster) > 0:
+      posters.append(gracenote_poster)
+
+    # Placeholder image if we're in DEBUG mode.
+    if len(posters) == 0 and DEBUG:
+      posters.append('https://dl.dropboxusercontent.com/u/8555161/no_artist.png')
 
     # Add posters.
     valid_keys = []
@@ -198,7 +200,7 @@ class GracenoteArtistAgent(Agent.Artist):
         poster_hash = Hash.MD5(poster_data)
 
         # Avoid the Last.fm placeholder image.
-        if poster_hash != '1c117ac7c5303f4a273546e0965c5573' and poster_hash != '833dccc04633e5616e9f34ae5d5ba057':
+        if poster_hash not in LFM_RED_POSTER_HASHES:
           Log('Adding poster with hash: %s' % poster_hash)
           metadata.posters[poster] = Proxy.Media(poster_data, sort_order='%02d' % (i + 1))
           valid_keys.append(poster)
@@ -226,6 +228,7 @@ class GracenoteAlbumAgent(Agent.Album):
 
   name = 'Plex Premium Music'
   languages = [Locale.Language.English,Locale.Language.NoLanguage]
+  contributes_to = ['com.plexapp.agents.localmedia']
 
 
   def search(self, results, media, lang, manual=False, tree=None):
@@ -233,6 +236,10 @@ class GracenoteAlbumAgent(Agent.Album):
     # Don't do automatic matching for this agent.
     if not manual:
       return
+
+    # Good match when being used as a secondary agent.
+    if not primary:
+      results.add(SearchResult(id=tree.id, score=100))
 
     album_results = []
     for fingerprint in ['0', '1']:
