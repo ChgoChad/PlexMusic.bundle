@@ -300,9 +300,9 @@ class GracenoteAlbumAgent(Agent.Album):
     for track in res.xpath('//Track'):
       
       i = track.get('index')
-      t = metadata.tracks[i]
+      t = metadata.tracks[track.get('guid')]
       
-      t.guid = track.get('guid')
+      t.index = int(track.get('index'))
       t.name = track.get('title')
       t.tempo = int(track.get('bpm') or -1)
 
