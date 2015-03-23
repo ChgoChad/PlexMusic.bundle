@@ -256,8 +256,16 @@ class GracenoteAlbumAgent(Agent.Album):
     Log('Updating album: ' + media.title)
     Log('With guid: ' + media.guid)
 
-    if not 'com.plexapp.agents.plexmusic://gracenote/' in media.guid:
-      Log('Skipping non-Gracenote album')
+    for track in media.children:
+      Log(str(track))
+
+    # Even if this album itself is not a Gracenote album, we may have some tracks that came from one, or we may be post multi-disc merge.
+    # Look through all the tracks for their parent GNIDs. Later, we'll load each one so we can update track data for everything.
+    #
+    album_gnids = set([track.guid.split('/')[-2] for track in media.children if 'com.plexapp.agents.plexmusic://gracenote' in track.guid])
+
+    if len(album_gnids) == 0:
+      Log('Didn\'t find any tracks from Gracenote albums, aborting')
       return
 
     try:
@@ -295,6 +303,22 @@ class GracenoteAlbumAgent(Agent.Album):
       metadata.genres.add(genres[1])
     elif len(genres) > 2 and Prefs['genre_level'] == '500':
       metadata.genres.add(genres[2])
+
+    # Go back and get track metadata for any additional albums if needed.
+    if 'com.plexapp.agents.plexmusic://gracenote' in media.guid:
+      album_gnids.remove(media.guid.split('/')[-1].split('?')[0])
+
+    for album_gnid in album_gnids:
+      
+      dummy_guid = 'com.plexapp.agents.plexmusic://gracenote/x/%s?%s' % (album_gnid, media.guid.split('?')[-1]) 
+      try:
+        additional_res = XML.ElementFromURL('http://127.0.0.1:32400/services/gracenote/update?guid=' + String.URLEncode(dummy_guid))
+      except Exception, e:
+        Log('Error issuing album update request: ' + str(e))
+        continue
+      
+      for track in additional_res.xpath('//Track'):
+        res.xpath('//Directory')[0].append(track)
 
     # Add the tracks.
     for track in res.xpath('//Track'):
