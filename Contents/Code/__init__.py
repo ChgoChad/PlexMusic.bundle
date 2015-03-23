@@ -294,11 +294,11 @@ class GracenoteAlbumAgent(Agent.Album):
     # Genres.
     metadata.genres.clear()
     genres = [genre for genre in res.xpath('//Directory[@type="album"]/Genre/@tag')]
-    if len(genres) > 0 and Prefs['genre_level'] == '10':
+    if len(genres) > 0 and Prefs['genre_level'] == 'Coarse (10 genres)':
       metadata.genres.add(genres[0])
-    elif len(genres) > 1 and Prefs['genre_level'] == '75':
+    elif len(genres) > 1 and Prefs['genre_level'] == 'Medium (75 genres)':
       metadata.genres.add(genres[1])
-    elif len(genres) > 2 and Prefs['genre_level'] == '500':
+    elif len(genres) > 2 and Prefs['genre_level'] == 'Fine (500 genres)':
       metadata.genres.add(genres[2])
 
     # Go back and get track metadata for any additional albums if needed.
