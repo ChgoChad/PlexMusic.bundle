@@ -256,9 +256,6 @@ class GracenoteAlbumAgent(Agent.Album):
     Log('Updating album: ' + media.title)
     Log('With guid: ' + media.guid)
 
-    for track in media.children:
-      Log(str(track))
-
     # Even if this album itself is not a Gracenote album, we may have some tracks that came from one, or we may be post multi-disc merge.
     # Look through all the tracks for their parent GNIDs. Later, we'll load each one so we can update track data for everything.
     #
