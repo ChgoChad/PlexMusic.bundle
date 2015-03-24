@@ -42,6 +42,8 @@ def album_search(tree, album, lang, album_results, artist_guids=[], fingerprint=
   
   try:
     res = XML.ElementFromURL(url)
+    if DEBUG:
+      Log(XML.StringFromElement(res))
     track_xml = res.xpath('//Track')
     if len(track_xml) > 0:
       first_track = [0]
@@ -58,6 +60,9 @@ def album_search(tree, album, lang, album_results, artist_guids=[], fingerprint=
   album_res = XML.ElementFromURL('http://127.0.0.1:32400/services/gracenote/update?guid=' + String.URLEncode(album_guid_consensus))
   album_elm = album_res.xpath('//Directory')[0]
 
+  if DEBUG:
+    Log(XML.StringFromElement(album_res))
+
   # No album art from gracenote, clear out the thumb.
   thumb = album_elm.get('thumb')
   if thumb == 'http://': 
@@ -66,13 +71,13 @@ def album_search(tree, album, lang, album_results, artist_guids=[], fingerprint=
   artist_thumbs.append(album_elm.get('parentThumb'))
 
   track_results = []
-  matched_guids = [t.get('guid') for t in res.xpath('//Track')]
-  for track in sorted(res.xpath('//Track'), key=lambda i: int(i.get('index'))):
+  matched_guids = [t.get('guid') for t in album_res.xpath('//Track')]
+  for track in sorted(album_res.xpath('//Track'), key=lambda i: int(i.get('index'))):
     matched = '1' if track.get('guid') in matched_guids else '0'
     track_results.append(SearchResult(matched=matched, type='track', name=track.get('title'), id=track.get('userData'), guid=track.get('guid'), index=track.get('index')))
 
   # Score based on number of matched tracks.  Used when checking against a threshold for automatically matching after renaming/reparenting.
-  album_score = int((len([t for t in track_results if t.matched == '1']) / float(len(track_results))) * 100)
+  album_score = int((len([t for t in track_results if t.matched == '1']) / float(max(len(track_results), len(album.children)))) * 100)
   album_result = SearchResult(id=album.id, type='album', parentName=album_elm.get('parentTitle'), name=album_elm.get('title'), guid=album_guid_consensus, thumb=thumb, year=album_elm.get('year'), parentGUID=album_elm.get('parentGUID'), score=album_score)
   for track_result in track_results:
     album_result.add(track_result)
@@ -244,11 +249,13 @@ class GracenoteAlbumAgent(Agent.Album):
     album_results = []
     for fingerprint in ['0', '1']:
       album_search(tree, media, lang, album_results, fingerprint=fingerprint)
-      seen = []
-      for album_result in album_results:
-        if not (album_result.parentName, album_result.name) in seen:
-          results.add(album_result)
-          seen.append((album_result.parentName, album_result.name))
+
+    seen = []
+    Log(str(seen))
+    for album_result in album_results:
+      if not (album_result.parentName, album_result.name) in seen:
+        results.add(album_result)
+        seen.append((album_result.parentName, album_result.name))
 
 
   def update(self, metadata, media, lang):
