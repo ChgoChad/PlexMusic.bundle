@@ -55,10 +55,23 @@ def album_search(tree, album, lang, album_results, artist_guids=[], fingerprint=
     return
 
   # Go back and get the full album for more reliable metadata and so we can populate any missing tracks in the SearchResult.
-  album_guid_consensus = Counter([t.get('parentGUID') for t in res.xpath('//Track')]).most_common()[0][0]
-  Log('Got consensus on album GUID: %s' % album_guid_consensus)
-  album_res = XML.ElementFromURL('http://127.0.0.1:32400/services/gracenote/update?guid=' + String.URLEncode(album_guid_consensus))
+  # Sometimes multi-disc albums get split out in Gracenote data, so load each one if we see that condition.
+  #
+  album_guid_consensus = {}
+  discs = sorted(list(set([int(t.get('parentIndex', 1)) for t in res.xpath('//Track')])))
+
+  for disc in discs:
+    album_guid_consensus[disc] = Counter([t.get('parentGUID') for t in res.xpath('//Track[@parentIndex="%s" or @parentIndex=""]' % disc)]).most_common()[0][0]
+    Log('Got consensus on album GUID: %s' % album_guid_consensus[disc])
+
+  album_res = XML.ElementFromURL('http://127.0.0.1:32400/services/gracenote/update?guid=' + String.URLEncode(album_guid_consensus[discs[0]]))  
   album_elm = album_res.xpath('//Directory')[0]
+
+  for disc in discs:
+    if disc != discs[0]:
+      for track in XML.ElementFromURL('http://127.0.0.1:32400/services/gracenote/update?guid=' + String.URLEncode(album_guid_consensus[disc])).xpath('//Track'):
+        track.set('parentIndex', str(disc))
+        album_elm.append(track)
 
   if DEBUG:
     Log(XML.StringFromElement(album_res))
@@ -72,13 +85,13 @@ def album_search(tree, album, lang, album_results, artist_guids=[], fingerprint=
 
   track_results = []
   matched_guids = [t.get('guid') for t in album_res.xpath('//Track')]
-  for track in sorted(album_res.xpath('//Track'), key=lambda i: int(i.get('index'))):
+  for track in sorted(album_res.xpath('//Track'), key=lambda i: (int(i.get('parentIndex', 1)), int(i.get('index')))):
     matched = '1' if track.get('guid') in matched_guids else '0'
-    track_results.append(SearchResult(matched=matched, type='track', name=track.get('title'), id=track.get('userData'), guid=track.get('guid'), index=track.get('index')))
+    track_results.append(SearchResult(matched=matched, type='track', name=track.get('title'), id=track.get('userData'), guid=track.get('guid'), index=track.get('index'), parentIndex=track.get('parentIndex', 1)))
 
   # Score based on number of matched tracks.  Used when checking against a threshold for automatically matching after renaming/reparenting.
   album_score = int((len([t for t in track_results if t.matched == '1']) / float(max(len(track_results), len(album.children)))) * 100)
-  album_result = SearchResult(id=album.id, type='album', parentName=album_elm.get('parentTitle'), name=album_elm.get('title'), guid=album_guid_consensus, thumb=thumb, year=album_elm.get('year'), parentGUID=album_elm.get('parentGUID'), score=album_score)
+  album_result = SearchResult(id=album.id, type='album', parentName=album_elm.get('parentTitle'), name=album_elm.get('title'), guid=album_guid_consensus[discs[0]], thumb=thumb, year=album_elm.get('year'), parentGUID=album_elm.get('parentGUID'), score=album_score)
   for track_result in track_results:
     album_result.add(track_result)
 
