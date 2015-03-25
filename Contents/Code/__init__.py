@@ -87,7 +87,11 @@ def album_search(tree, album, lang, album_results, artist_guids=[], fingerprint=
   matched_guids = [t.get('guid') for t in track_xml]
   for track in sorted(album_res.xpath('//Track'), key=lambda i: (int(i.get('parentIndex', 1)), int(i.get('index')))):
     matched = '1' if track.get('guid') in matched_guids else '0'
-    track_results.append(SearchResult(matched=matched, type='track', name=track.get('title'), id=track.get('userData'), guid=track.get('guid'), index=track.get('index'), parentIndex=track.get('parentIndex', 1)))
+    if matched == '1':
+      track_id = res.xpath('//Track[@guid="%s"]' % track.get('guid'))[0].get('userData')
+    else:
+      track_id = ''
+    track_results.append(SearchResult(matched=matched, type='track', name=track.get('title'), id=track_id, guid=track.get('guid'), index=track.get('index'), parentIndex=track.get('parentIndex', 1)))
 
   # Score based on number of matched tracks.  Used when checking against a threshold for automatically matching after renaming/reparenting.
   album_score = int((len([t for t in track_results if t.matched == '1']) / float(max(len(track_results), len(album.children)))) * 100)
