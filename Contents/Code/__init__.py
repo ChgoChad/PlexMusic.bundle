@@ -84,7 +84,7 @@ def album_search(tree, album, lang, album_results, artist_guids=[], fingerprint=
   artist_thumbs.append(album_elm.get('parentThumb'))
 
   track_results = []
-  matched_guids = [t.get('guid') for t in album_res.xpath('//Track')]
+  matched_guids = [t.get('guid') for t in track_xml]
   for track in sorted(album_res.xpath('//Track'), key=lambda i: (int(i.get('parentIndex', 1)), int(i.get('index')))):
     matched = '1' if track.get('guid') in matched_guids else '0'
     track_results.append(SearchResult(matched=matched, type='track', name=track.get('title'), id=track.get('userData'), guid=track.get('guid'), index=track.get('index'), parentIndex=track.get('parentIndex', 1)))
