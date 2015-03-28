@@ -41,7 +41,7 @@ def album_search(tree, album, lang, album_results, artist_guids=[], fingerprint=
   url = 'http://127.0.0.1:32400/services/gracenote/search?fingerprint=%s&%s' % (fingerprint, querystring)
   
   try:
-    res = XML.ElementFromURL(url)
+    res = XML.ElementFromURL(url, timeout=60)
     if DEBUG:
       Log(XML.StringFromElement(res))
     track_xml = res.xpath('//Track')
@@ -69,7 +69,7 @@ def album_search(tree, album, lang, album_results, artist_guids=[], fingerprint=
 
   for disc in discs:
     if disc != discs[0]:
-      for track in XML.ElementFromURL('http://127.0.0.1:32400/services/gracenote/update?guid=' + String.URLEncode(album_guid_consensus[disc])).xpath('//Track'):
+      for track in XML.ElementFromURL('http://127.0.0.1:32400/services/gracenote/update?guid=' + String.URLEncode(album_guid_consensus[disc]), timeout=60).xpath('//Track'):
         track.set('parentIndex', str(disc))
         album_elm.append(track)
 
@@ -302,7 +302,7 @@ class GracenoteAlbumAgent(Agent.Album):
       return
 
     try:
-      res = XML.ElementFromURL('http://127.0.0.1:32400/services/gracenote/update?guid=' + String.URLEncode(media.guid))
+      res = XML.ElementFromURL('http://127.0.0.1:32400/services/gracenote/update?guid=' + String.URLEncode(media.guid), timeout=60)
     except Exception, e:
       Log('Error issuing album update request: ' + str(e))
       return
