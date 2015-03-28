@@ -20,6 +20,14 @@ HTBACKDROPS_FULL_URL = 'http://htbackdrops.org/api/%s/download/%%s/fullsize' % H
 
 def find_artist_posters(posters, artist, album_titles, lang):
 
+    # Discogs cache.
+    try:
+      images = XML.ElementFromURL('http://meta.plex.tv/a/' + quote(normalize_artist_name(artist))).xpath('//image')
+      posters.extend([image.get('url') for image in images if image.get('primary') == '1'])
+      posters.extend([image.get('url') for image in images if image.get('primary') == '0'])
+    except:
+      Log('No artist result from Discogs cache')
+
     # Last.fm.
     try:
       lastfm_artist = Core.messaging.call_external_function('com.plexapp.agents.lastfm', 'MessageKit:ArtistSearch', kwargs = dict(artist=artist, albums=album_titles, lang=lang))
@@ -30,15 +38,6 @@ def find_artist_posters(posters, artist, album_titles, lang):
         Log('No artist result from Last.fm')
     except Exception, e:
       Log('Error calling in to Last.fm for artist posters: ' + str(e))
-
-    # Discogs cache.
-    try:
-      images = XML.ElementFromURL('http://meta.plex.tv/a/' + quote(normalize_artist_name(artist))).xpath('//image')
-      posters.extend([image.get('url') for image in images if image.get('primary') == '1'])
-      posters.extend([image.get('url') for image in images if image.get('primary') == '0'])
-    except:
-      Log('No artist result from Discogs cache')
-
 
 def find_artist_art(arts, artist, album_titles, lang):
 
