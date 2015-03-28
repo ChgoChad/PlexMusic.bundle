@@ -166,14 +166,17 @@ class GracenoteArtistAgent(Agent.Artist):
     posters = []
     arts = []
 
+    # FIXME, not sure why metadata title isn't set when used as secondary agent.
+    the_title = metadata.title or media.title
+
     # Special art for VA.
-    if metadata.title == 'Various Artists':
+    if the_title == 'Various Artists':
       posters.append('http://music.plex.tv/pixogs/various_artists_poster.jpg')
       arts.append('http://music.plex.tv/pixogs/various_artists_art.jpg')
       return
 
     # Do nothing for unknown.
-    elif metadata.title == '[Unknown Artist]':
+    elif the_title == '[Unknown Artist]':
       return
 
     gracenote_poster = None
@@ -192,6 +195,7 @@ class GracenoteArtistAgent(Agent.Artist):
         metadata.title = res.xpath('//Directory[@type="album"]')[0].get('parentTitle')
       else:
         metadata.title = media.title
+      the_title = metadata.title
 
       # Artist bio.
       metadata.summary = res.xpath('//Directory[@type="album"]')[0].get('parentSummary')
@@ -205,8 +209,8 @@ class GracenoteArtistAgent(Agent.Artist):
 
     # Find artist posters and art from other sources.
     album_titles = [a.title for a in media.children]
-    find_artist_art(arts, metadata.title, album_titles, lang)
-    find_artist_posters(posters, metadata.title, album_titles, lang)
+    find_artist_art(arts, the_title, album_titles, lang)
+    find_artist_posters(posters, the_title, album_titles, lang)
 
     # If we had a Gracenote poster, add it last.
     if gracenote_poster is not None and len(gracenote_poster) > 0:
