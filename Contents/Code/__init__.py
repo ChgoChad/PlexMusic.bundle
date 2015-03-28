@@ -113,13 +113,14 @@ class GracenoteArtistAgent(Agent.Artist):
 
   def search(self, results, media, lang='en', manual=False, tree=None, primary=True):
 
-    # Don't do automatic matching for this agent.
-    if not manual:
-      return
-
     # Good match when being used as a secondary agent.
     if not primary:
       results.add(SearchResult(id=tree.id, score=100))
+      return
+
+    # Don't do automatic matching for this agent.
+    if not manual:
+      return
 
     if Prefs['debug']:
       Log('tree -> albums: %s, all_parts: %d, children: %d, guid: %s, id: %s, originally_available_at: %s, title: %s' % (tree.albums, len(tree.all_parts()), len(tree.children), tree.guid, tree.id, tree.originally_available_at, tree.title))
@@ -175,6 +176,7 @@ class GracenoteArtistAgent(Agent.Artist):
     elif metadata.title == '[Unknown Artist]':
       return
 
+    gracenote_poster = None
     gracenote_guids = [c.guid for c in media.children if c.guid.startswith('com.plexapp.agents.plexmusic://gracenote/')]
     if len(gracenote_guids) > 0:
   
@@ -207,7 +209,7 @@ class GracenoteArtistAgent(Agent.Artist):
     find_artist_posters(posters, metadata.title, album_titles, lang)
 
     # If we had a Gracenote poster, add it last.
-    if len(gracenote_poster) > 0:
+    if gracenote_poster is not None and len(gracenote_poster) > 0:
       posters.append(gracenote_poster)
 
     # Placeholder image if we're in DEBUG mode.
@@ -254,16 +256,16 @@ class GracenoteAlbumAgent(Agent.Album):
   languages = [Locale.Language.English,Locale.Language.NoLanguage]
   contributes_to = ['com.plexapp.agents.localmedia']
 
-
   def search(self, results, media, lang, manual=False, tree=None, primary=False):
-    
-    # Don't do automatic matching for this agent.
-    if not manual:
-      return
 
     # Good match when being used as a secondary agent.
     if not primary:
       results.add(SearchResult(id=tree.id, score=100))
+      return
+    
+    # Don't do automatic matching for this agent.
+    if not manual:
+      return
 
     album_results = []
     for fingerprint in ['0', '1']:
