@@ -206,6 +206,10 @@ class GracenoteArtistAgent(Agent.Artist):
 
       # Artist poster.
       gracenote_poster = res.xpath('//Directory[@type="album"]')[0].get('parentThumb')
+    else:
+      
+      # We still need to make sure the title is set.
+      metadata.title = media.title
 
     # Find artist posters and art from other sources.
     album_titles = [a.title for a in media.children]
