@@ -207,7 +207,6 @@ class GracenoteArtistAgent(Agent.Artist):
       # Artist poster.
       gracenote_poster = res.xpath('//Directory[@type="album"]')[0].get('parentThumb')
     else:
-      
       # We still need to make sure the title is set.
       metadata.title = media.title
 
@@ -223,7 +222,7 @@ class GracenoteArtistAgent(Agent.Artist):
       posters.append(gracenote_poster)
       
     # If we didn't get an artist summary, try to get one from Last.FM.
-    if metadata.summary is None or len(metadata.summary) == 0:
+    if lastfm_artist is not None and (metadata.summary is None or len(metadata.summary) == 0):
       metadata.summary = String.DecodeHTMLEntities(String.StripTags(lastfm_artist['bio']['content'][:lastfm_artist['bio']['content'].find('\n\n')]).strip())
 
     # Placeholder image if we're in DEBUG mode.
