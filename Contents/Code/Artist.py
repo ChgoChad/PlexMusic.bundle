@@ -18,19 +18,19 @@ HTBACKDROPS_SEARCH_URL = 'http://htbackdrops.org/api/%s/searchXML?mbid=%%s&defau
 HTBACKDROPS_THUMB_URL = 'http://htbackdrops.org/api/%s/download/%%s/thumbnail' % HTBACKDROPS_API_KEY
 HTBACKDROPS_FULL_URL = 'http://htbackdrops.org/api/%s/download/%%s/fullsize' % HTBACKDROPS_API_KEY
 
-def find_artist_posters(posters, artist, album_titles, lang):
+def find_lastfm_artist(artist, album_titles, lang):
+    try: return Core.messaging.call_external_function('com.plexapp.agents.lastfm', 'MessageKit:ArtistSearch', kwargs = dict(artist=artist, albums=album_titles, lang=lang))
+    except: return None
+
+def find_artist_posters(posters, lastfm_artist):
 
     # Last.fm.
-    try:
-      lastfm_artist = Core.messaging.call_external_function('com.plexapp.agents.lastfm', 'MessageKit:ArtistSearch', kwargs = dict(artist=artist, albums=album_titles, lang=lang))
-      if lastfm_artist and lastfm_artist['name'] != 'Various Artists':
-        posters.extend([image['#text'] for image in lastfm_artist['image'] if len(image['#text']) > 0 and image['size'] == 'mega'])
-        posters.extend([image['#text'] for image in lastfm_artist['image'] if len(image['#text']) > 0 and image['size'] == 'extralarge'])
-      else:
-        Log('No artist result from Last.fm')
-    except Exception, e:
-      Log('Error calling in to Last.fm for artist posters: ' + str(e))
-      
+    if lastfm_artist and lastfm_artist['name'] != 'Various Artists':
+      posters.extend([image['#text'] for image in lastfm_artist['image'] if len(image['#text']) > 0 and image['size'] == 'mega'])
+      posters.extend([image['#text'] for image in lastfm_artist['image'] if len(image['#text']) > 0 and image['size'] == 'extralarge'])
+    else:
+      Log('No artist result from Last.fm')
+
     # Discogs cache.
     try:
       images = XML.ElementFromURL('http://meta.plex.tv/a/' + quote(normalize_artist_name(artist))).xpath('//image')
@@ -39,14 +39,7 @@ def find_artist_posters(posters, artist, album_titles, lang):
     except:
       Log('No artist result from Discogs cache')      
 
-def find_artist_art(arts, artist, album_titles, lang):
-
-    # Get the artist from Last.fm so we can grab the musicbrainz id.
-    try:
-      lastfm_artist = Core.messaging.call_external_function('com.plexapp.agents.lastfm', 'MessageKit:ArtistSearch', kwargs = dict(artist=artist, albums=album_titles, lang=lang))
-    except Exception, e:
-      Log('Error calling in to Last.fm for artist artwork (MBID): ' + str(e))
-      return
+def find_artist_art(arts, lastfm_artist):
 
     # Fanart.tv.
     artist_json = None

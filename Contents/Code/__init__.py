@@ -5,7 +5,7 @@
 from urllib import urlencode  # TODO: expose urlencode for dicts in the Framework?
 from collections import Counter
 from Utils import normalize_artist_name
-from Artist import find_artist_posters, find_artist_art
+from Artist import find_artist_posters, find_artist_art, find_lastfm_artist
 
 DEBUG = Prefs['debug']
 LFM_RED_POSTER_HASHES = ['1c117ac7c5303f4a273546e0965c5573', '833dccc04633e5616e9f34ae5d5ba057']
@@ -213,12 +213,18 @@ class GracenoteArtistAgent(Agent.Artist):
 
     # Find artist posters and art from other sources.
     album_titles = [a.title for a in media.children]
-    find_artist_art(arts, the_title, album_titles, lang)
-    find_artist_posters(posters, the_title, album_titles, lang)
+    lastfm_artist = find_lastfm_artist(the_title, album_titles, lang)
+    if lastfm_artist is not None:
+      find_artist_art(arts, lastfm_artist)
+      find_artist_posters(posters, lastfm_artist)
 
     # If we had a Gracenote poster, add it last.
     if gracenote_poster is not None and len(gracenote_poster) > 0:
       posters.append(gracenote_poster)
+      
+    # If we didn't get an artist summary, try to get one from Last.FM.
+    if metadata.summary is None or len(metadata.summary) == 0:
+      metadata.summary = String.DecodeHTMLEntities(String.StripTags(lastfm_artist['bio']['content'][:lastfm_artist['bio']['content'].find('\n\n')]).strip())
 
     # Placeholder image if we're in DEBUG mode.
     if len(posters) == 0 and DEBUG:
