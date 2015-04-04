@@ -54,7 +54,7 @@ def find_artist_art(arts, lastfm_artist):
           if lastfm_artist['mbid'] != fallback_mbid:
             artist_json = JSON.ObjectFromURL(FANART_TV_ARTIST_URL % lastfm_artist['mbid'], headers={'api-key':FANART_TV_API_KEY})
         except Exception, e:
-          Log('Couldn\'t obtain MBID for %s: %s' % (artist, str(e)))
+          Log('Couldn\'t obtain MBID %s' % str(e))
           return
 
       if artist_json and 'artistbackground' in artist_json:
