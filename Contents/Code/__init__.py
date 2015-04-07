@@ -335,7 +335,7 @@ class GracenoteAlbumAgent(Agent.Album):
       metadata.title = media.title
     metadata.summary = res.xpath('//Directory[@type="album"]')[0].get('summary')
     metadata.studio = res.xpath('//Directory[@type="album"]')[0].get('studio')
-    metadata.originally_available_at = Datetime.ParseDate(res.xpath('//Directory[@type="album"]')[0].get('year'))
+    metadata.originally_available_at = Datetime.ParseDate(res.xpath('//Directory[@type="album"]')[0].get('year') + '-01-01')
 
     # Posters.
     try:
