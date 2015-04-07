@@ -104,6 +104,17 @@ def album_search(tree, album, lang, album_results, artist_guids=[], fingerprint=
   album_results.append(album_result)
   artist_guids.append(album_elm.get('parentGUID'))
 
+def add_genres(res, metadata):
+  # Genres.
+  metadata.genres.clear()
+  genres = [genre for genre in res.xpath('//Directory[@type="album"]/Genre/@tag')]
+  if len(genres) > 0 and Prefs['genre_level'] == 'Coarse (10 genres)':
+    metadata.genres.add(genres[0])
+  elif len(genres) > 1 and Prefs['genre_level'] == 'Medium (75 genres)':
+    metadata.genres.add(genres[1])
+  elif len(genres) > 2 and Prefs['genre_level'] == 'Fine (500 genres)':
+    metadata.genres.add(genres[2])
+
 
 class GracenoteArtistAgent(Agent.Artist):
 
@@ -206,6 +217,9 @@ class GracenoteArtistAgent(Agent.Artist):
 
       # Artist poster.
       gracenote_poster = res.xpath('//Directory[@type="album"]')[0].get('parentThumb')
+      
+      # Genres.
+      add_genres(res, metadata)
     else:
       # We still need to make sure the title is set.
       metadata.title = media.title
@@ -335,14 +349,7 @@ class GracenoteAlbumAgent(Agent.Album):
       metadata.posters[0] = Proxy.Media(HTTP.Request('https://dl.dropboxusercontent.com/u/8555161/no_album.png'))
     
     # Genres.
-    metadata.genres.clear()
-    genres = [genre for genre in res.xpath('//Directory[@type="album"]/Genre/@tag')]
-    if len(genres) > 0 and Prefs['genre_level'] == 'Coarse (10 genres)':
-      metadata.genres.add(genres[0])
-    elif len(genres) > 1 and Prefs['genre_level'] == 'Medium (75 genres)':
-      metadata.genres.add(genres[1])
-    elif len(genres) > 2 and Prefs['genre_level'] == 'Fine (500 genres)':
-      metadata.genres.add(genres[2])
+    add_genres(res, metadata)
 
     # Go back and get track metadata for any additional albums if needed.
     if 'com.plexapp.agents.plexmusic://gracenote' in media.guid:
