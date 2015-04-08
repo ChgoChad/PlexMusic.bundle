@@ -7,7 +7,6 @@ from collections import Counter
 from Utils import normalize_artist_name
 from Artist import find_artist_posters, find_artist_art, find_lastfm_artist
 
-DEBUG = Prefs['debug']
 LFM_RED_POSTER_HASHES = ['1c117ac7c5303f4a273546e0965c5573', '833dccc04633e5616e9f34ae5d5ba057', '573e957e111f4ff846fbd6cf241c2bbd', '359a82f4540afe7e1ace42b08cdfcfed', '73083c9b3b4868dc3902926c7fe002ef']
 
 
@@ -42,8 +41,6 @@ def album_search(tree, album, lang, album_results, artist_guids=[], fingerprint=
   
   try:
     res = XML.ElementFromURL(url, timeout=60)
-    if DEBUG:
-      Log(XML.StringFromElement(res))
     track_xml = res.xpath('//Track')
     if len(track_xml) > 0:
       first_track = [0]
@@ -72,9 +69,6 @@ def album_search(tree, album, lang, album_results, artist_guids=[], fingerprint=
       for track in XML.ElementFromURL('http://127.0.0.1:32400/services/gracenote/update?guid=' + String.URLEncode(album_guid_consensus[disc]), timeout=60).xpath('//Track'):
         track.set('parentIndex', str(disc))
         album_elm.append(track)
-
-  if DEBUG:
-    Log(XML.StringFromElement(album_res))
 
   # No album art from gracenote, clear out the thumb.
   thumb = album_elm.get('thumb')
@@ -135,9 +129,6 @@ class GracenoteArtistAgent(Agent.Artist):
     # Don't do automatic matching for this agent.
     if not manual:
       return
-
-    if Prefs['debug']:
-      Log('tree -> albums: %s, all_parts: %d, children: %d, guid: %s, id: %s, originally_available_at: %s, title: %s' % (tree.albums, len(tree.all_parts()), len(tree.children), tree.guid, tree.id, tree.originally_available_at, tree.title))
 
     album_results = []
     artist_guids = []
@@ -200,10 +191,6 @@ class GracenoteArtistAgent(Agent.Artist):
       # Fetch an album (use the given child_guid if we have it) and use the artist data from that.
       res = XML.ElementFromURL('http://127.0.0.1:32400/services/gracenote/update?guid=' + String.URLEncode(gracenote_guids[0]))
 
-      if DEBUG:
-        Log('Raw GN result:')
-        Log(XML.StringFromElement(res))
-
       # Artist name.
       if metadata.title is None and not media.title:
         metadata.title = res.xpath('//Directory[@type="album"]')[0].get('parentTitle')
@@ -242,10 +229,6 @@ class GracenoteArtistAgent(Agent.Artist):
     # If we didn't get an artist summary, try to get one from Last.FM.
     if lastfm_artist is not None and (metadata.summary is None or len(metadata.summary) == 0):
       metadata.summary = String.DecodeHTMLEntities(String.StripTags(lastfm_artist['bio']['content'][:lastfm_artist['bio']['content'].find('\n\n')]).strip())
-
-    # Placeholder image if we're in DEBUG mode.
-    if len(posters) == 0 and DEBUG:
-      posters.append('https://dl.dropboxusercontent.com/u/8555161/no_artist.png')
 
     # Add posters.
     valid_keys = []
@@ -329,9 +312,6 @@ class GracenoteAlbumAgent(Agent.Album):
     except Exception, e:
       Log('Error issuing album update request: ' + str(e))
       return
-    
-    if DEBUG:
-      Log('Got album metadata:\n' + XML.StringFromElement(res))
 
     if metadata.title is None and not media.title:
       metadata.title = res.xpath('//Directory[@type="album"]')[0].get('title')
@@ -348,10 +328,7 @@ class GracenoteAlbumAgent(Agent.Album):
         metadata.posters[0] = Proxy.Media(HTTP.Request(poster_url))
     except Exception, e:
       Log('Couldn\'t add album art: ' + str(e))
-
-    if DEBUG and len(metadata.posters) == 0:
-      metadata.posters[0] = Proxy.Media(HTTP.Request('https://dl.dropboxusercontent.com/u/8555161/no_album.png'))
-    
+   
     # Genres.
     add_genres(res, metadata)
 
