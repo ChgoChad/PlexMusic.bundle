@@ -105,15 +105,18 @@ def album_search(tree, album, lang, album_results, artist_guids=[], fingerprint=
   artist_guids.append(album_elm.get('parentGUID'))
 
 def add_genres(res, metadata):
-  # Genres.
+
   metadata.genres.clear()
   genres = [genre for genre in res.xpath('//Directory[@type="album"]/Genre/@tag')]
-  if len(genres) > 0 and Prefs['genre_level'] == 'Coarse (10 genres)':
-    metadata.genres.add(genres[0])
-  elif len(genres) > 1 and Prefs['genre_level'] == 'Medium (75 genres)':
-    metadata.genres.add(genres[1])
-  elif len(genres) > 2 and Prefs['genre_level'] == 'Fine (500 genres)':
-    metadata.genres.add(genres[2])
+  if Prefs['genre_level'] == 'Coarse (10 genres)':
+    genres = genres[:1]
+  elif Prefs['genre_level'] == 'Medium (75 genres)':
+    genres = genres[:2]
+  elif Prefs['genre_level'] == 'Fine (500 genres)':
+    genres = genres[:3]
+  for genre in reversed(genres):
+    metadata.genres.add(genre)
+
 
 
 class GracenoteArtistAgent(Agent.Artist):
@@ -220,6 +223,7 @@ class GracenoteArtistAgent(Agent.Artist):
       
       # Genres.
       add_genres(res, metadata)
+
     else:
       # We still need to make sure the title is set.
       metadata.title = media.title
