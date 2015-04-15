@@ -3,7 +3,7 @@
     "id": "genre_level",
     "type": "enum",
     "label": "Genre level",
-    "values": ["Coarse (10 genres)", "Medium (75 genres)", "Fine (500 genres)"],
+    "values": ["None (don't populate genres)", "Coarse (10 genres)", "Medium (75 genres)", "Fine (500 genres)"],
     "default": "Medium (75 genres)"
   }
 ]
