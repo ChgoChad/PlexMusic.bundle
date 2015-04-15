@@ -115,6 +115,38 @@ def add_genres(res, metadata):
     for genre in reversed(genres):
       metadata.genres.add(genre)
 
+def add_posters(posters, metadata):
+  valid_keys = []
+  for i, poster in enumerate(posters):
+    try:
+      poster_req = HTTP.Request(poster)
+      poster_req.load()
+      poster_data = poster_req.content
+      poster_hash = Hash.MD5(poster_data)
+
+      # Avoid the Last.fm placeholder image.
+      if poster_hash not in LFM_RED_POSTER_HASHES:
+        Log('Adding poster with hash: %s' % poster_hash)
+        metadata.posters[poster] = Proxy.Media(poster_data, sort_order='%02d' % (i + 1))
+        valid_keys.append(poster)
+      else:
+        Log('Skipping Last.fm Red Poster of Death: %s' % poster)
+
+    except Exception, e:
+      Log('Couldn\'t add poster (%s): %s' % (poster, str(e)))
+  
+  metadata.posters.validate_keys(valid_keys)
+
+def add_art(arts, metadata):
+  valid_keys = []
+  for i, art in enumerate(arts):
+    try:
+      metadata.art[art[0]] = Proxy.Preview(HTTP.Request(art[1]), sort_order='%02d' % (i + 1))
+      valid_keys.append(art[0])
+    except Exception, e:
+      Log('Couldn\'t add art (%s): %s' % (art[0], str(e)))
+
+  metadata.art.validate_keys(valid_keys)
 
 class GracenoteArtistAgent(Agent.Artist):
 
@@ -179,8 +211,8 @@ class GracenoteArtistAgent(Agent.Artist):
 
     # Special art for VA.
     if the_title == 'Various Artists':
-      posters.append('http://music.plex.tv/pixogs/various_artists_poster.jpg')
-      arts.append('http://music.plex.tv/pixogs/various_artists_art.jpg')
+      add_posters(['http://music.plex.tv/pixogs/various_artists_poster.jpg'], metadata)
+      add_art([['http://music.plex.tv/pixogs/various_artists_art.jpg', 'http://music.plex.tv/pixogs/various_artists_art.jpg']], metadata)
       return
 
     # Do nothing for unknown.
@@ -234,38 +266,10 @@ class GracenoteArtistAgent(Agent.Artist):
       metadata.summary = String.DecodeHTMLEntities(String.StripTags(lastfm_artist['bio']['content'][:lastfm_artist['bio']['content'].find('\n\n')]).strip())
 
     # Add posters.
-    valid_keys = []
-    for i, poster in enumerate(posters):
-      try:
-        poster_req = HTTP.Request(poster)
-        poster_req.load()
-        poster_data = poster_req.content
-        poster_hash = Hash.MD5(poster_data)
-
-        # Avoid the Last.fm placeholder image.
-        if poster_hash not in LFM_RED_POSTER_HASHES:
-          Log('Adding poster with hash: %s' % poster_hash)
-          metadata.posters[poster] = Proxy.Media(poster_data, sort_order='%02d' % (i + 1))
-          valid_keys.append(poster)
-        else:
-          Log('Skipping Last.fm Red Poster of Death: %s' % poster)
-
-      except Exception, e:
-        Log('Couldn\'t add poster (%s): %s' % (poster, str(e)))
-    
-    metadata.posters.validate_keys(valid_keys)
+    add_posters(posters, metadata)
 
     # Add art.
-    valid_keys = []
-    for i, art in enumerate(arts):
-      try:
-        metadata.art[art[0]] = Proxy.Preview(HTTP.Request(art[1]), sort_order='%02d' % (i + 1))
-        valid_keys.append(art[0])
-      except Exception, e:
-        Log('Couldn\'t add art (%s): %s' % (art[0], str(e)))
-
-    metadata.art.validate_keys(valid_keys)
-
+    add_art(arts, metadata)
 
 class GracenoteAlbumAgent(Agent.Album):
 
