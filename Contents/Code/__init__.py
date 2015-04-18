@@ -92,7 +92,7 @@ def album_search(tree, album, lang, album_results, artist_guids=[], fingerprint=
     track_results.append(SearchResult(matched=matched, type='track', name=track.get('title'), id=track_id, guid=track.get('guid'), index=track.get('index'), parentIndex=track.get('parentIndex', 1)))
 
   # Score based on number of matched tracks.  Used when checking against a threshold for automatically matching after renaming/reparenting.
-  album_score = int((len([t for t in track_results if t.matched == '1']) / float(max(len(track_results), len(album.children)))) * 100)
+  album_score = 100 - (len(album.children) - len([t for t in track_results if t.matched == '1']))
   album_result = SearchResult(id=album.id, type='album', parentName=album_elm.get('parentTitle'), name=album_elm.get('title'), guid=album_guid_consensus[discs[0]], thumb=thumb, year=album_elm.get('year'), parentGUID=album_elm.get('parentGUID'), score=album_score)
   for track_result in track_results:
     album_result.add(track_result)
@@ -294,7 +294,7 @@ class GracenoteAlbumAgent(Agent.Album):
 
     seen = []
     Log(str(seen))
-    for album_result in album_results:
+    for album_result in sorted(album_results, key=lambda a: a.score, reverse=True):
       if not (album_result.parentName, album_result.name) in seen:
         results.add(album_result)
         seen.append((album_result.parentName, album_result.name))
