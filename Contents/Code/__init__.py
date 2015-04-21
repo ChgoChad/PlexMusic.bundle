@@ -260,8 +260,9 @@ class GracenoteArtistAgent(Agent.Artist):
       # Find similar artists.
       similar_artists = find_lastfm_similar_artists(lastfm_artist, lang)
       metadata.similar.clear()
-      for artist in similar_artists:
-        metadata.similar.add(artist['name'])
+      if similar_artists is not None:
+        for artist in similar_artists:
+          metadata.similar.add(artist['name'])
 
     # If we had a Gracenote poster, add it last.
     if gracenote_poster is not None and len(gracenote_poster) > 0:
