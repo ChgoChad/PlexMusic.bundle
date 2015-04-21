@@ -26,6 +26,10 @@ def find_lastfm_top_tracks(artist, lang):
     try: return Core.messaging.call_external_function('com.plexapp.agents.lastfm', 'MessageKit:ArtistTopTracks', kwargs = dict(artist=artist['name'], lang=lang))
     except: return None
 
+def find_lastfm_similar_artists(artist, lang):
+    try: return Core.messaging.call_external_function('com.plexapp.agents.lastfm', 'MessageKit:ArtistGetSimilar', kwargs = dict(artist=artist['name'], lang=lang))
+    except: return None
+
 def find_artist_posters(posters, lastfm_artist):
 
     # Last.fm.

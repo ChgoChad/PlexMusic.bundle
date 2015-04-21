@@ -5,7 +5,7 @@
 from urllib import urlencode  # TODO: expose urlencode for dicts in the Framework?
 from collections import Counter
 from Utils import normalize_artist_name
-from Artist import find_artist_posters, find_artist_art, find_lastfm_artist, find_lastfm_top_tracks
+from Artist import find_artist_posters, find_artist_art, find_lastfm_artist, find_lastfm_top_tracks, find_lastfm_similar_artists
 
 LFM_RED_POSTER_HASHES = ['1c117ac7c5303f4a273546e0965c5573', '833dccc04633e5616e9f34ae5d5ba057', '573e957e111f4ff846fbd6cf241c2bbd', '359a82f4540afe7e1ace42b08cdfcfed', '73083c9b3b4868dc3902926c7fe002ef', 'f157bd7cfdca5ffe5e9d49f80e4ddd3e', 'f9c024789ef0eea9808c549907d46f71']
 
@@ -257,6 +257,12 @@ class GracenoteArtistAgent(Agent.Artist):
       find_artist_art(arts, lastfm_artist)
       find_artist_posters(posters, lastfm_artist)
 
+      # Find similar artists.
+      similar_artists = find_lastfm_similar_artists(lastfm_artist, lang)
+      metadata.similar.clear()
+      for artist in similar_artists:
+        metadata.similar.add(artist['name'])
+
     # If we had a Gracenote poster, add it last.
     if gracenote_poster is not None and len(gracenote_poster) > 0:
       posters.append(gracenote_poster)
@@ -317,14 +323,16 @@ class GracenoteAlbumAgent(Agent.Album):
     # Try to get last.fm information.
     most_popular_tracks = {}
     try:
+      # Look up the artist.
       lastfm_artist = find_lastfm_artist(media.parentTitle, [media.title], lang)
+      
+      # Get top tracks.
       top_tracks = find_lastfm_top_tracks(lastfm_artist, lang)
       for track in top_tracks:
         most_popular_tracks[track['name']] = int(track['playcount'])
+
     except:
       pass
-      
-    Log(most_popular_tracks)
 
     try:
       res = XML.ElementFromURL('http://127.0.0.1:32400/services/gracenote/update?guid=' + String.URLEncode(media.guid), timeout=60)
