@@ -154,7 +154,12 @@ def add_art(arts, metadata):
 class GracenoteArtistAgent(Agent.Artist):
 
   name = 'Plex Premium Music'
-  languages = [Locale.Language.English,Locale.Language.NoLanguage]
+  languages = [Locale.Language.English, Locale.Language.Arabic, Locale.Language.Bulgarian, Locale.Language.Chinese, Locale.Language.Croatian, 
+               Locale.Language.Czech, Locale.Language.Danish, Locale.Language.Dutch, Locale.Language.Finnish, Locale.Language.French, 
+               Locale.Language.German, Locale.Language.Greek, Locale.Language.Hungarian, Locale.Language.Indonesian, Locale.Language.Italian, 
+               Locale.Language.Japanese, Locale.Language.Korean, Locale.Language.NorwegianNynorsk, Locale.Language.Polish, 
+               Locale.Language.Portuguese, Locale.Language.Romanian, Locale.Language.Russian, Locale.Language.Serbian, Locale.Language.Slovak, 
+               Locale.Language.Spanish, Locale.Language.Swedish, Locale.Language.Thai, Locale.Language.Turkish, Locale.Language.Vietnamese]
   contributes_to = ['com.plexapp.agents.localmedia']
 
   def search(self, results, media, lang='en', manual=False, tree=None, primary=True):
@@ -284,7 +289,12 @@ class GracenoteArtistAgent(Agent.Artist):
 class GracenoteAlbumAgent(Agent.Album):
 
   name = 'Plex Premium Music'
-  languages = [Locale.Language.English,Locale.Language.NoLanguage]
+  languages = [Locale.Language.English, Locale.Language.Arabic, Locale.Language.Bulgarian, Locale.Language.Chinese, Locale.Language.Croatian, 
+               Locale.Language.Czech, Locale.Language.Danish, Locale.Language.Dutch, Locale.Language.Finnish, Locale.Language.French, 
+               Locale.Language.German, Locale.Language.Greek, Locale.Language.Hungarian, Locale.Language.Indonesian, Locale.Language.Italian, 
+               Locale.Language.Japanese, Locale.Language.Korean, Locale.Language.NorwegianNynorsk, Locale.Language.Polish, 
+               Locale.Language.Portuguese, Locale.Language.Romanian, Locale.Language.Russian, Locale.Language.Serbian, Locale.Language.Slovak, 
+               Locale.Language.Spanish, Locale.Language.Swedish, Locale.Language.Thai, Locale.Language.Turkish, Locale.Language.Vietnamese]
   contributes_to = ['com.plexapp.agents.localmedia']
 
   def search(self, results, media, lang, manual=False, tree=None, primary=False):
