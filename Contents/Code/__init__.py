@@ -9,6 +9,9 @@ from Artist import find_artist_posters, find_artist_art, find_lastfm_artist, fin
 
 LFM_RED_POSTER_HASHES = ['1c117ac7c5303f4a273546e0965c5573', '833dccc04633e5616e9f34ae5d5ba057', '573e957e111f4ff846fbd6cf241c2bbd', '359a82f4540afe7e1ace42b08cdfcfed', '73083c9b3b4868dc3902926c7fe002ef', 'f157bd7cfdca5ffe5e9d49f80e4ddd3e', 'f9c024789ef0eea9808c549907d46f71']
 
+@expose
+def NormalizeArtist(artist):
+  return normalize_artist_name(artist)
 
 def Start():
   HTTP.CacheTime = 30
