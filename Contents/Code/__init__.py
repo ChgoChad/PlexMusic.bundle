@@ -5,7 +5,7 @@
 from urllib import urlencode  # TODO: expose urlencode for dicts in the Framework?
 from collections import Counter
 from Utils import normalize_artist_name
-from Artist import find_artist_posters, find_artist_art, find_lastfm_artist, find_lastfm_top_tracks, find_lastfm_similar_artists
+from Artist import find_artist_posters, find_artist_art, find_lastfm_artist, find_lastfm_top_tracks, find_lastfm_similar_artists, find_lastfm_album
 
 LFM_RED_POSTER_HASHES = ['1c117ac7c5303f4a273546e0965c5573', '833dccc04633e5616e9f34ae5d5ba057', '573e957e111f4ff846fbd6cf241c2bbd', '359a82f4540afe7e1ace42b08cdfcfed', '73083c9b3b4868dc3902926c7fe002ef', 'f157bd7cfdca5ffe5e9d49f80e4ddd3e', 'f9c024789ef0eea9808c549907d46f71']
 
@@ -334,20 +334,6 @@ class GracenoteAlbumAgent(Agent.Album):
       Log('Didn\'t find any tracks from Gracenote albums, aborting')
       return
 
-    # Try to get last.fm information.
-    most_popular_tracks = {}
-    try:
-      # Look up the artist.
-      lastfm_artist = find_lastfm_artist(media.parentTitle, [media.title], lang)
-      
-      # Get top tracks.
-      top_tracks = find_lastfm_top_tracks(lastfm_artist, lang)
-      for track in top_tracks:
-        most_popular_tracks[track['name']] = int(track['playcount'])
-
-    except:
-      pass
-
     try:
       res = XML.ElementFromURL('http://127.0.0.1:32400/services/gracenote/update?guid=' + String.URLEncode(media.guid), timeout=60)
     except Exception, e:
@@ -362,6 +348,24 @@ class GracenoteAlbumAgent(Agent.Album):
     metadata.studio = res.xpath('//Directory[@type="album"]')[0].get('studio')
     if res.xpath('//Directory[@type="album"]')[0].get('year') is not None:
       metadata.originally_available_at = Datetime.ParseDate(res.xpath('//Directory[@type="album"]')[0].get('year') + '-01-01')
+
+    # Try to get last.fm information.
+    most_popular_tracks = {}
+    try:
+      # Look up the artist.
+      lastfm_artist = find_lastfm_artist(media.parentTitle, [media.title], lang)
+      
+      # Get top tracks.
+      top_tracks = find_lastfm_top_tracks(lastfm_artist, lang)
+      for track in top_tracks:
+        most_popular_tracks[track['name']] = int(track['playcount'])
+
+      # Get the album.
+      album = find_lastfm_album(lastfm_artist, metadata.title, res.xpath('//Directory[@type="album"]')[0].get('year'), lang)
+      if album and album['releasedate']:
+        metadata.originally_available_at = Datetime.ParseDate(album['releasedate'].split(',')[0].strip())
+    except:
+      pass
 
     # Posters.
     try:
