@@ -261,13 +261,16 @@ class GracenoteArtistAgent(Agent.Artist):
     # Find artist posters and art from other sources.
     album_titles = [a.title for a in media.children]
     lastfm_artist = find_lastfm_artist(the_title, album_titles, lang)
+
+    metadata.similar.clear()
+    
     if lastfm_artist is not None:
       find_artist_art(arts, lastfm_artist)
       find_artist_posters(posters, lastfm_artist)
 
       # Find similar artists.
       similar_artists = find_lastfm_similar_artists(lastfm_artist, lang)
-      metadata.similar.clear()
+      
       if similar_artists is not None:
         for artist in similar_artists:
           metadata.similar.add(artist['name'])
