@@ -5,7 +5,7 @@
 from urllib import urlencode  # TODO: expose urlencode for dicts in the Framework?
 from collections import Counter
 from Utils import normalize_artist_name
-from Artist import find_artist_posters, find_artist_art, find_lastfm_artist, find_lastfm_top_tracks, find_lastfm_similar_artists, find_lastfm_album
+from Artist import find_artist_posters, find_artist_art, find_lastfm_artist, find_lastfm_top_tracks, find_lastfm_similar_artists, find_lastfm_album, find_lastfm_events
 
 LFM_RED_POSTER_HASHES = ['1c117ac7c5303f4a273546e0965c5573', '833dccc04633e5616e9f34ae5d5ba057', '573e957e111f4ff846fbd6cf241c2bbd', '359a82f4540afe7e1ace42b08cdfcfed', '73083c9b3b4868dc3902926c7fe002ef', 'f157bd7cfdca5ffe5e9d49f80e4ddd3e', 'f9c024789ef0eea9808c549907d46f71']
 
@@ -263,6 +263,7 @@ class GracenoteArtistAgent(Agent.Artist):
     lastfm_artist = find_lastfm_artist(the_title, album_titles, lang)
 
     metadata.similar.clear()
+    metadata.concerts.clear()
     
     if lastfm_artist is not None:
       find_artist_art(arts, lastfm_artist)
@@ -274,7 +275,18 @@ class GracenoteArtistAgent(Agent.Artist):
       if similar_artists is not None:
         for artist in similar_artists:
           metadata.similar.add(artist['name'])
-
+      
+      # Find events
+      events = find_lastfm_events(lastfm_artist, lang)
+      for event in events:
+        concert = metadata.concerts.new()
+        concert.title = event['title']
+        concert.venue = event['venue']['name']
+        concert.city = event['venue']['location']['city']
+        concert.country = event['venue']['location']['country']
+        concert.date = Datetime.ParseDate(event['startDate'], '%Y-%m-%d %H:%M:00')
+        concert.url = event['url']
+      
     # If we had a Gracenote poster, add it last.
     if gracenote_poster is not None and len(gracenote_poster) > 0:
       posters.append(gracenote_poster)
