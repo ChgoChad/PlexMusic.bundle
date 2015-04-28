@@ -277,15 +277,16 @@ class GracenoteArtistAgent(Agent.Artist):
           metadata.similar.add(artist['name'])
       
       # Find events
-      events = find_lastfm_events(lastfm_artist, lang)
-      for event in events:
-        concert = metadata.concerts.new()
-        concert.title = event['title']
-        concert.venue = event['venue']['name']
-        concert.city = event['venue']['location']['city']
-        concert.country = event['venue']['location']['country']
-        concert.date = Datetime.ParseDate(event['startDate'], '%Y-%m-%d %H:%M:00')
-        concert.url = lastfm_artist['url'] + '/+events'
+      if Prefs['concerts']:
+        events = find_lastfm_events(lastfm_artist, lang)
+        for event in events:
+          concert = metadata.concerts.new()
+          concert.title = event['title']
+          concert.venue = event['venue']['name']
+          concert.city = event['venue']['location']['city']
+          concert.country = event['venue']['location']['country']
+          concert.date = Datetime.ParseDate(event['startDate'], '%Y-%m-%d %H:%M:00')
+          concert.url = lastfm_artist['url'] + '/+events'
 
     # If we had a Gracenote poster, add it last.
     if gracenote_poster is not None and len(gracenote_poster) > 0:
@@ -422,8 +423,10 @@ class GracenoteAlbumAgent(Agent.Album):
       # See if it's the top tracks.
       for popular_track in most_popular_tracks.keys():
         if LevenshteinRatio(popular_track, t.name) > 0.95:
-          t.rating_count = most_popular_tracks[popular_track]
-          Log('Matched: "%s" with "%s" (play count %d)' % (popular_track, t.name, most_popular_tracks[popular_track]))
+          if Prefs['popular']:
+            t.rating_count = most_popular_tracks[popular_track]
+          else:
+            t.rating_count = 0
 
       # Moods.
       t.moods.clear()
