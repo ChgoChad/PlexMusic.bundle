@@ -279,14 +279,18 @@ class GracenoteArtistAgent(Agent.Artist):
       # Find events
       if Prefs['concerts']:
         events = find_lastfm_events(lastfm_artist, lang)
-        for event in events:
-          concert = metadata.concerts.new()
-          concert.title = event['title']
-          concert.venue = event['venue']['name']
-          concert.city = event['venue']['location']['city']
-          concert.country = event['venue']['location']['country']
-          concert.date = Datetime.ParseDate(event['startDate'], '%Y-%m-%d %H:%M:00')
-          concert.url = lastfm_artist['url'] + '/+events'
+        if events:
+          for event in events:
+            try:
+              concert = metadata.concerts.new()
+              concert.title = event['title']
+              concert.venue = event['venue']['name']
+              concert.city = event['venue']['location']['city']
+              concert.country = event['venue']['location']['country']
+              concert.date = Datetime.ParseDate(event['startDate'], '%Y-%m-%d %H:%M:00')
+              concert.url = lastfm_artist['url'] + '/+events'
+            except:
+              pass
 
     # If we had a Gracenote poster, add it last.
     if gracenote_poster is not None and len(gracenote_poster) > 0:
