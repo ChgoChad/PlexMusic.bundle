@@ -285,8 +285,8 @@ class GracenoteArtistAgent(Agent.Artist):
         concert.city = event['venue']['location']['city']
         concert.country = event['venue']['location']['country']
         concert.date = Datetime.ParseDate(event['startDate'], '%Y-%m-%d %H:%M:00')
-        concert.url = event['url']
-      
+        concert.url = lastfm_artist['url'] + '/+events'
+
     # If we had a Gracenote poster, add it last.
     if gracenote_poster is not None and len(gracenote_poster) > 0:
       posters.append(gracenote_poster)
