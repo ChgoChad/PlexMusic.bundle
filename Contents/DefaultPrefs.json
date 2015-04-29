@@ -2,8 +2,8 @@
   {
     "id": "genre_level",
     "type": "enum",
-    "label": "Genre level",
-    "values": ["None (don't populate genres)", "Coarse (10 genres)", "Medium (75 genres)", "Fine (500 genres)"],
+    "label": "Gracenote genre level",
+    "values": ["None (don't use genres from Gracenote)", "Coarse (10 genres)", "Medium (75 genres)", "Fine (500 genres)"],
     "default": "Medium (75 genres)"
   },
   {
