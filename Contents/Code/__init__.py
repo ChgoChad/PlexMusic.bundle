@@ -417,11 +417,7 @@ class GracenoteAlbumAgent(Agent.Album):
     # Add the tracks.
     for track in res.xpath('//Track'):
       
-      i = track.get('index')
-      t = metadata.tracks[track.get('guid')]
-      
-      t.index = int(track.get('index'))
-      t.name = track.get('title')
+      t = metadata.tracks[track.get('guid')]      
       t.tempo = int(track.get('bpm') or -1)
       
       # See if it's the top tracks.
