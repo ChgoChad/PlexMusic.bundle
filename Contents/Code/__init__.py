@@ -360,10 +360,10 @@ class GracenoteAlbumAgent(Agent.Album):
       Log('Error issuing album update request: ' + str(e))
       return
 
-    if metadata.title is None and not media.title:
-      metadata.title = res.xpath('//Directory[@type="album"]')[0].get('title')
-    else:
+    # Carry over the media title. This should always be set by the Premium Music scanner.
+    if media.title is not None and len(media.title) > 0:
       metadata.title = media.title
+
     metadata.summary = res.xpath('//Directory[@type="album"]')[0].get('summary')
     metadata.studio = res.xpath('//Directory[@type="album"]')[0].get('studio')
     if res.xpath('//Directory[@type="album"]')[0].get('year') is not None:
