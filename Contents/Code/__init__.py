@@ -422,7 +422,7 @@ class GracenoteAlbumAgent(Agent.Album):
       
       # See if it's the top tracks.
       for popular_track in most_popular_tracks.keys():
-        if LevenshteinRatio(popular_track, t.name) > 0.95:
+        if popular_track and t.name and LevenshteinRatio(popular_track, t.name) > 0.95:
           if Prefs['popular']:
             t.rating_count = most_popular_tracks[popular_track]
           else:
