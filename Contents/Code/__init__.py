@@ -403,32 +403,42 @@ class GracenoteAlbumAgent(Agent.Album):
       album_gnids.remove(media.guid.split('/')[-1].split('?')[0])
 
     for album_gnid in album_gnids:
-      
       dummy_guid = 'com.plexapp.agents.plexmusic://gracenote/x/%s?%s' % (album_gnid, media.guid.split('?')[-1]) 
       try:
         additional_res = XML.ElementFromURL('http://127.0.0.1:32400/services/gracenote/update?guid=' + String.URLEncode(dummy_guid))
       except Exception, e:
         Log('Error issuing album update request: ' + str(e))
         continue
-      
+
       for track in additional_res.xpath('//Track'):
         res.xpath('//Directory')[0].append(track)
-
-    # Add the tracks.
+        
+    # Map gracenote tracks by GUID.
+    gracenote_tracks = {}
     for track in res.xpath('//Track'):
+      gracenote_tracks[track.get('guid')] = track
+
+    # Go through all the media tracks, match up with metadata via GUID.
+    for track in media.children:
+      guid = track.guid
+      title = track.title
+
+      gracenote_track = gracenote_tracks[guid] if guid in gracenote_tracks else None
+      metadata_track = metadata.tracks[guid]
       
-      t = metadata.tracks[track.get('guid')]      
-      t.tempo = int(track.get('bpm') or -1)
-      
+      if gracenote_track:
+        metadata_track.tempo = int(gracenote_track.get('bpm') or -1)
+
       # See if it's the top tracks.
       for popular_track in most_popular_tracks.keys():
-        if popular_track and t.name and LevenshteinRatio(popular_track, t.name) > 0.95:
+        if popular_track and title and LevenshteinRatio(popular_track, title) > 0.95:
           if Prefs['popular']:
-            t.rating_count = most_popular_tracks[popular_track]
+            metadata_track.rating_count = most_popular_tracks[popular_track]
           else:
-            t.rating_count = 0
+            metadata_track.rating_count = 0
 
       # Moods.
-      t.moods.clear()
-      for mood in track.xpath('./Mood/@tag'):
-        t.moods.add(mood)
+      metadata_track.moods.clear()
+      if gracenote_track:
+        for mood in gracenote_track.xpath('./Mood/@tag'):
+          metadata_track.moods.add(mood)
