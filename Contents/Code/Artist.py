@@ -9,8 +9,8 @@ FANART_TV_API_KEY = '72519ab36caf49c09f69a028fb7f741d'
 FANART_TV_ARTIST_URL = 'http://webservice.fanart.tv/v3/music/%s' # TODO: Cloudflare this.
 FANART_TV_PREVIEW_URL = '%s/preview.jpg'
 
-MB_ARTIST_URL = 'http://musicbrainz.org/ws/2/artist/%s'
-MB_RELEASE_URL = 'http://musicbrainz.org/ws/2/release/%s?inc=release-groups'
+MB_ARTIST_URL = 'http://musicbrainz.plex.tv/ws/2/artist/%s'
+MB_RELEASE_URL = 'http://musicbrainz.plex.tv/ws/2/release/%s?inc=release-groups'
 MB_NS = {'a': 'http://musicbrainz.org/ns/mmd-2.0#'}
 MB_HEADERS = {'User-Agent':'Plex Music Agent/1.0 (http://plex.tv)'}
 
