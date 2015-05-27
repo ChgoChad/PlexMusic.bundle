@@ -17,5 +17,11 @@
     "type": "bool",
     "label": "Download popular track information",
     "default": "true"
+  },
+  {
+    "id": "album_reviews",
+    "type": "bool",
+    "label": "Download album reviews",
+    "default": "true"
   }
 ]
