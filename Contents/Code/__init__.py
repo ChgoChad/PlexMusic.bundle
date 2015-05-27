@@ -367,8 +367,11 @@ class GracenoteAlbumAgent(Agent.Album):
     if media.title is not None and len(media.title) > 0:
       metadata.title = media.title
 
-    metadata.summary = res.xpath('//Directory[@type="album"]')[0].get('summary')
+    if Prefs['album_reviews']:
+      metadata.summary = res.xpath('//Directory[@type="album"]')[0].get('summary')
+
     metadata.studio = res.xpath('//Directory[@type="album"]')[0].get('studio')
+
     if res.xpath('//Directory[@type="album"]')[0].get('year') is not None:
       metadata.originally_available_at = Datetime.ParseDate(res.xpath('//Directory[@type="album"]')[0].get('year') + '-01-01')
 
