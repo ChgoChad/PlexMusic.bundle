@@ -45,7 +45,7 @@ def artist_mbid_lookup(artist, lastfm_artist):
     artist_mbid = lastfm_artist['mbid']
 
     # See if there's an updated MBID.
-    try: artist_mbid = XML.ElementFromURL(MB_ARTIST_URL % lastfm_artist['mbid']).xpath('//a:artist/@id', headers=MB_HEADERS, namespaces=MB_NS)[0]
+    try: artist_mbid = XML.ElementFromURL(MB_ARTIST_URL % lastfm_artist['mbid'], headers=MB_HEADERS).xpath('//a:artist/@id', namespaces=MB_NS)[0]
     except: pass
 
   if artist_mbid is not None:
