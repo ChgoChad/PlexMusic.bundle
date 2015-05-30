@@ -16,7 +16,7 @@ MB_HEADERS = {'User-Agent':'Plex Music Agent/1.0 (http://plex.tv)'}
 
 HTBACKDROPS_API_KEY = '15f8fe4ad7760d77c85e686eefafd26f'
 HTBACKDROPS_MBID_SEARCH_URL = 'http://htbackdrops.org/api/%s/searchXML?mbid=%%s&default_operator=and&limit=50&aid=1' % HTBACKDROPS_API_KEY
-HTBACKDROPS_KEYWORD_SEARCH_URL = 'http://htbackdrops.org/api/%s/searchXML?keywords=%%s&default_operator=and&limit=50&aid=1,5' % HTBACKDROPS_API_KEY
+HTBACKDROPS_KEYWORD_SEARCH_URL = 'http://htbackdrops.org/api/%s/searchXML?keywords=%%s&default_operator=and&limit=50&aid=1' % HTBACKDROPS_API_KEY
 HTBACKDROPS_THUMB_URL = 'http://htbackdrops.org/api/%s/download/%%s/thumbnail' % HTBACKDROPS_API_KEY
 HTBACKDROPS_FULL_URL = 'http://htbackdrops.org/api/%s/download/%%s/fullsize' % HTBACKDROPS_API_KEY
 
