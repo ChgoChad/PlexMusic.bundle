@@ -17,7 +17,10 @@ def Start():
   HTTP.CacheTime = 30
 
 def LevenshteinRatio(first, second):
-  return 1 - (Util.LevenshteinDistance(first, second) / float(max(len(first), len(second))))
+  if not (first and second):
+    return 0.0
+  else:
+    return 1 - (Util.LevenshteinDistance(first, second) / float(max(len(first), len(second))))
 
 def album_search(tree, album, lang, album_results, artist_guids=[], fingerprint='1', artist_thumbs=[]):
 
