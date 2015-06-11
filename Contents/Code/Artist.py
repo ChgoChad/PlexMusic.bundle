@@ -112,13 +112,12 @@ def find_artist_art(arts, artist, lastfm_artist, fanart_artist, artist_mbid):
     # If we had no MBID, or we didn't find any artwork based on one, try with the regular HT Backdrops search.
     if len(htbackdrops_arts) == 0:
       artist_results = find_htbackdrops_artist(artist)
-      if artist_results and len(artist_results) > 0 and artist_results[0]['score'] > 98:
+      if artist_results and len(artist_results) > 0 and artist_results[0]['score'] >= 98:
         try:
-          for image_id in XML.ElementFromURL(HTBACKDROPS_KEYWORD_SEARCH_URL % String.Quote(artist_results[0]['id'])).xpath('//image/id/text()'):
+          for image_id in XML.ElementFromURL(HTBACKDROPS_KEYWORD_SEARCH_URL % String.Quote(String.DecodeHTMLEntities(artist_results[0]['id']), usePlus=True)).xpath('//image/id/text()'):
             htbackdrops_arts.append((HTBACKDROPS_FULL_URL % image_id, HTBACKDROPS_THUMB_URL % image_id))
         except Exception, e:
           Log('Error fetching artist art from HTBackdrops by artist name: ' + str(e))
 
     # Finally append any arts we found.
     arts.extend(htbackdrops_arts)
-    
